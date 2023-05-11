@@ -1,0 +1,13 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/lachl/ecte477/devel/lib/python3/dist-packages",
+        "/home/lachl/inference-2d-3d/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/lachl/ecte477/devel/lib/python3/dist-packages",
+        "/home/lachl/inference-2d-3d/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "cmake.configureOnOpen": false
+}
