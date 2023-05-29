@@ -11,7 +11,7 @@ from sensor_msgs.msg import Image
 class Detector:
     def __init__(self, render=False):
         # load inference model
-        self.model = YOLO("yolov8n-seg.pt")
+        self.model = YOLO("nanoroboseg200.pt", task="segment")
         self.model.to("cuda")
         # image subscriber
         self.sub = rospy.Subscriber('camera/color/image_raw', Image, self.new_image_cb)
@@ -25,7 +25,7 @@ class Detector:
 
     def inference_cb(self, _):
         # do detection
-        results = self.model(self.img)
+        results = self.model(self.img, conf=0.3, imgsz=320)
         # render result in cv     
         if self.render:
             self.render_cb(results)
