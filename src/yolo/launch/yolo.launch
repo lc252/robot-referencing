@@ -1,0 +1,12 @@
+<launch>
+    <arg name="cuda" default="true"/>
+
+    <!-- RS Camera -->
+    <include file="$(find realsense2_camera)/launch/rs_rgbd.launch"/>
+
+    <!-- YOLO -->
+    <node pkg="yolo" type="detect.py" name="yolo">
+        <param name="cuda" value="$(arg cuda)"/>
+    </node>
+
+</launch>

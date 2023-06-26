@@ -11,8 +11,9 @@ from sensor_msgs.msg import Image
 class Detector:
     def __init__(self, render=False):
         # load inference model
-        self.model = YOLO("yolov8n-seg.pt")
-        self.model.to("cuda")
+        self.model = YOLO("models/yolov8n-seg.pt")
+        if rospy.get_param('~cuda'):
+            self.model.to("cuda")
         # image subscriber
         self.sub = rospy.Subscriber('camera/color/image_raw', Image, self.new_image_cb)
         self.img = np.zeros(shape=(480,640,3))
