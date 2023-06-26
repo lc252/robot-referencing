@@ -6,6 +6,10 @@
     <!-- RS Camera -->
     <include file="$(find yolo)/launch/rs_rgbd.launch">
         <arg name="output" value="log"/>
+        <arg name="depth_width"         value="640"/>
+        <arg name="depth_height"        value="480"/>
+        <arg name="color_width"         value="640"/>
+        <arg name="color_height"        value="480"/>
     </include>
 
     <!-- YOLO -->
