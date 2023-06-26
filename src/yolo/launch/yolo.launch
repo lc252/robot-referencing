@@ -4,12 +4,17 @@
     <arg name="render" default="false"/>
 
     <!-- RS Camera -->
-    <include file="$(find realsense2_camera)/launch/rs_rgbd.launch"/>
+    <include file="$(find yolo)/launch/rs_rgbd.launch">
+        <arg name="output" value="log"/>
+    </include>
 
     <!-- YOLO -->
-    <node pkg="yolo" type="detect.py" name="yolo" output="screen">
+    <node pkg="yolo" type="detect.py" name="yolo">
         <param name="cuda" value="$(arg cuda)"/>
         <param name="render" value="$(arg render)"/>
     </node>
+
+    <!-- Rviz -->
+    <node pkg="rviz" type="rviz" name="rviz"/>
 
 </launch>
