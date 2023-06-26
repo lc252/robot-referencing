@@ -15,7 +15,7 @@
     </include>
 
     <!-- YOLO -->
-    <node pkg="yolo" type="detect.py" name="yolo">
+    <node pkg="yolo" type="detect.py" name="yolo" output="screen">
         <param name="cuda" value="$(arg cuda)"/>
         <param name="render" value="$(arg render)"/>
     </node>
