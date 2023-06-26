@@ -1,12 +1,15 @@
 <launch>
+    <!-- Args -->
     <arg name="cuda" default="true"/>
+    <arg name="render" default="false"/>
 
     <!-- RS Camera -->
     <include file="$(find realsense2_camera)/launch/rs_rgbd.launch"/>
 
     <!-- YOLO -->
-    <node pkg="yolo" type="detect.py" name="yolo">
+    <node pkg="yolo" type="detect.py" name="yolo" output="screen">
         <param name="cuda" value="$(arg cuda)"/>
+        <param name="render" value="$(arg render)"/>
     </node>
 
 </launch>

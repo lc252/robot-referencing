@@ -9,17 +9,17 @@ from sensor_msgs.msg import Image
 
 
 class Detector:
-    def __init__(self, render=False):
+    def __init__(self):
         # load inference model
         self.model = YOLO("models/yolov8n-seg.pt")
-        if rospy.get_param('~cuda'):
+        self.params = rospy.get_param("yolo/")
+        if self.params["cuda"]:
             self.model.to("cuda")
         # image subscriber
         self.sub = rospy.Subscriber('camera/color/image_raw', Image, self.new_image_cb)
         self.img = np.zeros(shape=(480,640,3))
         # timer callback to perform inference. on a separate thread for efficiency
         self.timer = rospy.timer.Timer(rospy.Duration(1/30), self.inference_cb)
-        self.render = render
 
     def new_image_cb(self, img_msg: Image):
         self.img = np.frombuffer(img_msg.data, dtype=np.uint8).reshape(img_msg.height, img_msg.width, -1)
@@ -28,7 +28,7 @@ class Detector:
         # do detection
         results = self.model(self.img)
         # render result in cv     
-        if self.render:
+        if True: #self.params["render"]:
             self.render_cb(results)
     
     def render_cb(self, results):
@@ -39,5 +39,5 @@ class Detector:
 
 if __name__ == '__main__':
     rospy.init_node('yolo_inference_node', anonymous=True)
-    display = Detector(render=True)
+    display = Detector()
     rospy.spin()
