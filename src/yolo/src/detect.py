@@ -4,6 +4,7 @@ import rospy
 from ultralytics import YOLO
 import numpy as np
 import cv2
+from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import message_filters
 from yolo.msg import Mask, MaskArray
@@ -37,12 +38,13 @@ class Detector:
         self.timer = rospy.timer.Timer(rospy.Duration(1/30), self.inference_cb)
 
     def sync_cb(self, img_msg, pc2_msg):
-        self.img = np.frombuffer(img_msg.data, dtype=np.uint8).reshape(img_msg.height, img_msg.width, -1)
+        # self.img = np.frombuffer(img_msg.data, dtype=np.uint8).reshape(img_msg.height, img_msg.width, -1)
+        self.img = CvBridge().imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
         self.cloud = pc2_msg
 
     def inference_cb(self, timer):
         # do detection
-        results = self.model.predict(self.img, show=self.params["render"])
+        results = self.model.predict(self.img, show=self.params["render"], verbose=False, imgsz=320)
         masks = results[0].masks if results[0].masks != None else []
         boxes = results[0].boxes if results[0].boxes != None else []
         
