@@ -55,4 +55,4 @@ CATKIN_IGNORE
 vscode/
 
 # yolo
-*.pt
+#*.pt
