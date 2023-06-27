@@ -31,7 +31,7 @@ class Detector:
         self.sync_sub.registerCallback(self.sync_cb)
 
         # Detection Mask Publisher
-        self.mask_pub = rospy.Publisher("yolo/detections", MaskArray)
+        self.mask_pub = rospy.Publisher("yolo/detections", MaskArray, queue_size=1)
 
         # timer callback to perform inference. on a separate thread for efficiency
         self.timer = rospy.timer.Timer(rospy.Duration(1/30), self.inference_cb)
@@ -51,11 +51,11 @@ class Detector:
 
         # iterate detections
         for box, mask in zip(boxes, masks):
-            det = Mask(cls=box.cls, 
-                       conf=box.conf, 
-                       width=np.shape(self.img)[0], 
-                       height=np.shape(self.img)[1], 
-                       mask=np.ndarray.flatten(mask.data))
+            det = Mask(cls=int(box.cls), 
+                       conf=float(box.conf), 
+                       width=int(np.shape(self.img)[0]), 
+                       height=int(np.shape(self.img)[1]), 
+                       poly=tuple(np.ndarray.flatten(mask.xy[0]).astype(int)))
             msg.masks.append(det)
 
         self.mask_pub.publish(msg)
@@ -65,4 +65,4 @@ class Detector:
 if __name__ == '__main__':
     rospy.init_node('yolo_inference_node', anonymous=True, log_level=rospy.DEBUG)
     display = Detector()
-    rospy.spin()
+    rospy.spin() 

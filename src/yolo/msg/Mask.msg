@@ -8,4 +8,4 @@ float32 conf
 int32 width
 int32 height
 # binary mask
-bool[] mask
+int32[] poly
