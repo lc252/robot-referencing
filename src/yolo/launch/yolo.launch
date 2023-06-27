@@ -3,7 +3,7 @@
     <!-- Args -->
     <arg name="cuda"                    default="true"/>
     <arg name="render"                  default="false"/>
-    <arg name="model"                   default="/home/fif/lc252/robot-referencing/src/yolo/models/nano100.pt"/>
+    <arg name="model"                   default="/home/fif/lc252/robot-referencing/src/yolo/models/yolov8n-seg.pt"/>
 
     <!-- RS Camera -->
     <include file="$(find yolo)/launch/rs_rgbd.launch">
