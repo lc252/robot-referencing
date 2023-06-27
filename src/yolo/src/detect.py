@@ -12,9 +12,11 @@ from yolo.msg import Mask, MaskArray
 
 class Detector:
     def __init__(self):
-        # load inference model
-        self.model = YOLO("models/yolov8n-seg.pt")
+        # load params
         self.params = rospy.get_param("yolo/")
+
+        # load inference model
+        self.model = YOLO(self.params["model"])
         if self.params["cuda"]:
             self.model.to("cuda")
         
