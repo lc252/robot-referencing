@@ -1,7 +1,7 @@
 <launch>
     
     <!-- RS Camera -->
-    <include file="$(find yolo)/launch/rs_rgbd.launch">
+    <include file="$(find multi_aruco)/launch/rs_rgbd.launch">
         <arg name="output"              value="log"/>
         <arg name="depth_width"         value="640"/>
         <arg name="depth_height"        value="480"/>
@@ -23,6 +23,11 @@
     <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/>
 
     <!-- EKF -->
-    
+    <!-- <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
+        <rosparam command="load" file="$(find multi_aruco)/params/ekf_params.yaml"/>
+    </node> -->
+
+    <!-- RViz -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/settings.rviz" required="true"/>
 
 </launch>

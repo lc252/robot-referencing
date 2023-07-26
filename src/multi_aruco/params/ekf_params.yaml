@@ -1,0 +1,65 @@
+map_frame: map            # Defaults to "map", removed since unused - world_frame is set to odom_frame
+odom_frame: base_link
+base_link_frame: camera_link
+world_frame: base_link
+
+# A pose estimator for each Aruco
+pose0: pose/1
+pose0_config: [true,  true,  true,
+               true, true, true,
+               false, false, false,
+               false, false, false,
+               false, false, false]
+pose0_differential: false
+pose0_relative: false
+pose0_queue_size: 5
+pose0_nodelay: false
+
+pose1: pose/2
+pose1_config: [true,  true,  true,
+               true, true, true,
+               false, false, false,
+               false, false, false,
+               false, false, false]
+pose1_differential: false
+pose1_relative: false
+pose1_queue_size: 5
+pose1_nodelay: false
+
+pose2: pose/3
+pose2_config: [true,  true,  true,
+               true, true, true,
+               false, false, false,
+               false, false, false,
+               false, false, false]
+pose2_differential: false
+pose2_relative: false
+pose2_queue_size: 5
+pose2_nodelay: false
+
+pose3: pose/4
+pose3_config: [true,  true,  true,
+               true, true, true,
+               false, false, false,
+               false, false, false,
+               false, false, false]
+pose3_differential: false
+pose3_relative: false
+pose3_queue_size: 5
+pose3_nodelay: false
+
+# IMU
+imu0: /imu
+imu0_config: [false, false, false,
+              true,  true,  true,
+              false, false, false,
+              true,  true,  true,
+              true,  true,  true]
+imu0_nodelay: false
+imu0_differential: false
+imu0_relative: true
+imu0_queue_size: 5
+# imu0_pose_rejection_threshold: 0.8                 # Note the difference in parameter names
+# imu0_twist_rejection_threshold: 0.8                #
+# imu0_linear_acceleration_rejection_threshold: 0.8  #
+imu0_remove_gravitational_acceleration: true
