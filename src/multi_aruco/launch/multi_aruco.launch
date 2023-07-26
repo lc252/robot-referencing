@@ -20,6 +20,7 @@
         <arg name="dictionary" default="16"/>
         <arg name="do_pose_estimation" default="true"/>
     </include>
+    <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/>
 
     <!-- EKF -->
     
