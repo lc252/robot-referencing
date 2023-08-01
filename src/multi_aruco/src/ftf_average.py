@@ -36,12 +36,12 @@ class ftf_average():
             y.append(ftf.transform.translation.y)
             z.append(ftf.transform.translation.z)
         
-        cov = np.array([[np.std(x), 0, 0, 0, 0, 0],
-                        [0, np.std(y), 0, 0, 0, 0],
-                        [0, 0, np.std(z), 0, 0, 0],
-                        [0, 0, 0, np.std(roll), 0, 0],
-                        [0, 0, 0, 0, np.std(pitch), 0],
-                        [0, 0, 0, 0, 0, np.std(yaw)]])
+        cov = np.array([[np.var(x), 0, 0, 0, 0, 0],
+                        [0, np.var(y), 0, 0, 0, 0],
+                        [0, 0, np.var(z), 0, 0, 0],
+                        [0, 0, 0, np.var(roll), 0, 0],
+                        [0, 0, 0, 0, np.var(pitch), 0],
+                        [0, 0, 0, 0, 0, np.var(yaw)]])
         cov = cov**2
 
         q = transformations.quaternion_from_euler(np.mean(roll), np.mean(pitch), np.mean(yaw))
