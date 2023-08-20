@@ -1,0 +1,33 @@
+<launch>
+    
+    <!-- RS Camera -->
+    <include file="$(find multi_aruco)/launch/rs_rgbd.launch">
+        <arg name="output"              value="log"/>
+        <arg name="depth_width"         value="640"/>
+        <arg name="depth_height"        value="480"/>
+        <arg name="depth_fps"           value="30"/>
+        <arg name="color_width"         value="640"/>
+        <arg name="color_height"        value="480"/>
+        <arg name="color_fps"           value="30"/>
+    </include>
+
+    <!-- Aruco Detection -->
+    <include file="$(find aruco_detect)/launch/aruco_detect.launch">
+        <arg name="camera" default="/camera/color"/>
+        <arg name="image" default="image_raw"/>
+        <arg name="transport" default="compressed"/>
+        <arg name="fiducial_len" default="0.08"/>
+        <arg name="dictionary" default="16"/>
+        <arg name="do_pose_estimation" default="true"/>
+    </include>
+    <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/>
+
+    <!-- EKF -->
+    <!-- <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
+        <rosparam command="load" file="$(find multi_aruco)/params/ekf_params.yaml"/>
+    </node> -->
+
+    <!-- RViz -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/settings.rviz" required="true"/>
+
+</launch>
