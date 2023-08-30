@@ -1,9 +1,12 @@
 // ROS includes
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+// tf includes
 #include <tf/transform_broadcaster.h>
 #include <tf2_eigen/tf2_eigen.h>
-
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
 // PCL point cloud types
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -30,6 +33,87 @@
 typedef pcl::PointNormal PointNT;
 typedef pcl::PointCloud<PointNT> PointCloudT;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloudXYZ;
+
+
+
+class super4pcs_registration_node
+{
+public:
+    super4pcs_registration_node():
+        nh{},
+        cloud_sub(nh.subscribe("cloud", 1, &super4pcs_registration_node::cloud_cb, this)),
+        tf_buffer(),
+        tf_listener(tf_buffer),
+        tf_broadcaster()
+    {
+        load_robot();
+    };
+    
+    ~super4pcs_registration_node();
+
+private:
+    ros::NodeHandle nh;
+    ros::Subscriber cloud_sub;
+    
+    tf2_ros::Buffer tf_buffer;
+    tf2_ros::TransformListener tf_listener;
+    tf2_ros::TransformBroadcaster tf_broadcaster;
+
+    PointCloudT::Ptr scene_cloud;
+    PointCloudT::Ptr robot_cloud;
+    PointCloudT::Ptr base_link_cloud;
+    PointCloudT::Ptr link_1_cloud;
+    PointCloudT::Ptr link_2_cloud;
+    PointCloudT::Ptr link_3_cloud;
+    PointCloudT::Ptr link_4_cloud;
+    PointCloudT::Ptr link_5_cloud;
+    PointCloudT::Ptr link_6_cloud;
+
+
+    void cloud_cb(sensor_msgs::PointCloud2 cloud)
+    {
+        ;
+    }
+
+    void load_robot()
+    {
+        ;
+    }
+
+    void build_robot_cloud()
+    {
+        ;
+    }
+
+    void downsample(PointCloudT::Ptr &cloud, float leaf_size)
+    {
+        pcl::VoxelGrid<PointNT> grid;
+        grid.setLeafSize(leaf_size, leaf_size, leaf_size);
+        grid.setInputCloud(cloud);
+        grid.filter(*cloud);
+    }
+
+    void est_normals(PointCloudT::Ptr &cloud, float sr)
+    {
+        pcl::NormalEstimationOMP<PointNT, PointNT> nest;
+        nest.setRadiusSearch(sr);
+        nest.setInputCloud(cloud);
+        nest.compute(*cloud);
+    }
+
+    void publish_cloud(PointCloudT::Ptr &cloud)
+    {
+        sensor_msgs::PointCloud2 ros_cloud;
+        pcl::toROSMsg(*cloud, ros_cloud);
+        ros_cloud.header.frame_id = "camera_color_optical_frame";
+        // Publish clouds
+        object_aligned_pub.publish(ros_cloud);
+    }
+
+};
+
+
+
 
 // Publishers
 ros::Publisher object_aligned_pub;
