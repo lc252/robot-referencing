@@ -139,7 +139,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/registration_node.cpp)
 add_executable(super4pcs_registration src/super4pcs_registration.cpp)
 add_executable(fpfh_registration src/fpfh_registration.cpp)
-add_executable(robot_registration src/fpfh_registration.cpp)
+add_executable(robot_registration src/robot_registration.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,7 +157,7 @@ add_executable(robot_registration src/fpfh_registration.cpp)
 # )
 target_link_libraries(super4pcs_registration ${catkin_LIBRARIES} gr::algo)
 target_link_libraries(fpfh_registration ${catkin_LIBRARIES})
-target_link_libraries(robot_registration ${catkin_LIBRARIES})
+target_link_libraries(robot_registration ${catkin_LIBRARIES} gr::algo)
 
 #############
 ## Install ##
