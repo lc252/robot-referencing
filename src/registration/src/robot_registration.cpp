@@ -69,7 +69,7 @@ public:
         ros::param::get("~fpfh/fpfh_samples", fpfh_samples);
         ros::param::get("~fpfh/correspondence_randomness", correspondence_randomness);
         ros::param::get("~fpfh/similarity_threshold", similarity_threshold);
-        ros::param::get("~fpfh/max_correspondence_distance", max_correspondence_distance);
+        ros::param::get("~fpfh/max_correspondence_distance", max_correspondence_distance_fpfh);
         ros::param::get("~fpfh/inlier_fraction", inlier_fraction);
 
         ros::param::get("~super4pcs/overlap", overlap);
@@ -128,7 +128,7 @@ private:
     int fpfh_samples;
     int correspondence_randomness;
     float similarity_threshold;
-    float max_correspondence_distance;
+    float max_correspondence_distance_fpfh;
     float inlier_fraction;
     // super4pcs
     float overlap;
@@ -158,17 +158,17 @@ private:
 
         // Downsample
         pcl::console::print_debug("[PCL] Downsampling Clouds\n");
-        downsample(scene, 0.005);
-        downsample(robot_cloud, 0.005);
+        downsample(scene, downsample_leaf_size);
+        downsample(robot_cloud, downsample_leaf_size);
 
         // Estimate normals
         pcl::console::print_debug("[PCL] Estimating Normals\n");
-        est_normals(scene, 0.02);
-        est_normals(robot_cloud, 0.02);
+        est_normals(scene, normal_radius_search);
+        est_normals(robot_cloud, normal_radius_search);
 
         // Estimate features
-        est_features(robot_cloud, robot_features, 0.02);
-        est_features(scene, scene_features, 0.02);
+        est_features(robot_cloud, robot_features, feature_radius_search);
+        est_features(scene, scene_features, feature_radius_search);
 
         // Perform alignment
         if (use_super4pcs)
@@ -210,9 +210,9 @@ private:
         pcl::Super4PCS<PointNT, PointNT> super4pcs; 
         super4pcs.setInputSource(source_cloud);
         super4pcs.setInputTarget(robot_cloud);
-        super4pcs.setOverlap(0.8);
-        super4pcs.setDelta(0.1);
-        super4pcs.setSampleSize(200);
+        super4pcs.setOverlap(overlap);
+        super4pcs.setDelta(delta);
+        super4pcs.setSampleSize(super4pcs_samples);
         super4pcs.align(*source_cloud);
         transformation_estimate = super4pcs.getFinalTransformation();
     }
@@ -235,12 +235,12 @@ private:
         fpfh.setSourceFeatures(source_features);
         fpfh.setInputTarget(robot_cloud);
         fpfh.setTargetFeatures(robot_features);
-        fpfh.setMaximumIterations(50000);
-        fpfh.setNumberOfSamples(25);
-        fpfh.setCorrespondenceRandomness(15);
-        fpfh.setSimilarityThreshold(0.5);
-        fpfh.setMaxCorrespondenceDistance(0.01f*0.01f);
-        fpfh.setInlierFraction(0.9);
+        fpfh.setMaximumIterations(max_fpfh_iterations);
+        fpfh.setNumberOfSamples(fpfh_samples);
+        fpfh.setCorrespondenceRandomness(correspondence_randomness);
+        fpfh.setSimilarityThreshold(similarity_threshold);
+        fpfh.setMaxCorrespondenceDistance(max_correspondence_distance_fpfh);
+        fpfh.setInlierFraction(inlier_fraction);
         fpfh.align(*source_cloud);
         transformation_estimate = fpfh.getFinalTransformation();
     }
@@ -253,10 +253,10 @@ private:
         pcl::IterativeClosestPoint<PointNT, PointNT> icp;
         icp.setInputSource(source_cloud);
         icp.setInputTarget(robot_cloud);
-        // icp.setMaxCorrespondenceDistance(0.05);
-        // icp.setTransformationEpsilon(1e-8);
-        // icp.setEuclideanFitnessEpsilon(1e-8);
-        icp.setMaximumIterations(10000);
+        icp.setMaxCorrespondenceDistance(max_correspondence_distance_icp);
+        icp.setTransformationEpsilon(transformation_epsilon);
+        icp.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon);
+        icp.setMaximumIterations(max_icp_iterations);
         icp.align(*source_cloud);
         transformation_estimate = icp.getFinalTransformation();
     }
