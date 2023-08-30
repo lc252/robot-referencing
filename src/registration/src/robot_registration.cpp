@@ -57,6 +57,30 @@ public:
         ros::Duration(1.0).sleep();
         build_robot_cloud();
         publish_cloud(robot_cloud, "map");
+
+        // get params
+        ros::param::get("~use_super4pcs", use_super4pcs);
+        ros::param::get("~use_icp", use_icp);
+        ros::param::get("~process/downsample_leaf_size", downsample_leaf_size);
+        ros::param::get("~process/normal_radius_search", normal_radius_search);
+        ros::param::get("~process/feature_radius_search", feature_radius_search);
+
+        ros::param::get("~fpfh/max_fpfh_iterations", max_fpfh_iterations);
+        ros::param::get("~fpfh/fpfh_samples", fpfh_samples);
+        ros::param::get("~fpfh/correspondence_randomness", correspondence_randomness);
+        ros::param::get("~fpfh/similarity_threshold", similarity_threshold);
+        ros::param::get("~fpfh/max_correspondence_distance", max_correspondence_distance);
+        ros::param::get("~fpfh/inlier_fraction", inlier_fraction);
+
+        ros::param::get("~super4pcs/overlap", overlap);
+        ros::param::get("~super4pcs/delta", delta);
+        ros::param::get("~super4pcs/super4pcs_samples", super4pcs_samples);
+
+        ros::param::get("~icp/max_icp_iterations", max_icp_iterations);
+        ros::param::get("~icp/max_correspondence_distance_icp", max_correspondence_distance_icp);
+        ros::param::get("~icp/transformation_epsilon", transformation_epsilon);
+        ros::param::get("~icp/euclidean_fitness_epsilon", euclidean_fitness_epsilon);
+
     };
     
     ~robot_registration_node()
@@ -65,17 +89,21 @@ public:
     }
 
 private:
+    // ROS
     ros::NodeHandle nh;
     ros::Subscriber cloud_sub;
     ros::Publisher cloud_pub;
     
+    // tf
     tf2_ros::Buffer tf_buffer;
     tf2_ros::TransformListener tf_listener;
     tf2_ros::TransformBroadcaster tf_broadcaster;
 
+    // clouds
     PointCloudT::Ptr scene_cloud;
     PointCloudT::Ptr robot_cloud;
 
+    // links
     PointCloudT::Ptr base_link_cloud;
     PointCloudT::Ptr link_1_cloud;
     PointCloudT::Ptr link_2_cloud;
@@ -85,7 +113,32 @@ private:
     PointCloudT::Ptr link_6_cloud;
     PointCloudT::Ptr transformed_link_cloud;
 
-    Eigen::Matrix4f transform;
+    // transform estimation
+    Eigen::Matrix4f transformation_estimate;
+
+    // params
+    // process
+    bool use_super4pcs;
+    bool use_icp;
+    float downsample_leaf_size;
+    float normal_radius_search;
+    float feature_radius_search;
+    // fpfh
+    int max_fpfh_iterations;
+    int fpfh_samples;
+    int correspondence_randomness;
+    float similarity_threshold;
+    float max_correspondence_distance;
+    float inlier_fraction;
+    // super4pcs
+    float overlap;
+    float delta;
+    int super4pcs_samples;
+    // icp
+    int max_icp_iterations;
+    float max_correspondence_distance_icp;
+    float transformation_epsilon;
+    float euclidean_fitness_epsilon;
 
 
     void cloud_cb(sensor_msgs::PointCloud2 cloud_in)
@@ -134,7 +187,7 @@ private:
 
         // cast to type that tf2_eigen accepts
         Eigen::Affine3d transformation;  
-        transformation.matrix() = transform.cast<double>();
+        transformation.matrix() = transformation_estimate.cast<double>();
 
         // create transform TF
         geometry_msgs::TransformStamped object_alignment_tf;
@@ -161,7 +214,7 @@ private:
         super4pcs.setDelta(0.1);
         super4pcs.setSampleSize(200);
         super4pcs.align(*source_cloud);
-        transform = super4pcs.getFinalTransformation();
+        transformation_estimate = super4pcs.getFinalTransformation();
     }
 
     void fpfh_register(PointCloudT::Ptr &source_cloud, FeatureCloudT::Ptr &source_features, FeatureCloudT::Ptr &robot_features)
@@ -189,6 +242,7 @@ private:
         fpfh.setMaxCorrespondenceDistance(0.01f*0.01f);
         fpfh.setInlierFraction(0.9);
         fpfh.align(*source_cloud);
+        transformation_estimate = fpfh.getFinalTransformation();
     }
 
     void icp_refine(PointCloudT::Ptr &source_cloud)
@@ -204,7 +258,7 @@ private:
         // icp.setEuclideanFitnessEpsilon(1e-8);
         icp.setMaximumIterations(10000);
         icp.align(*source_cloud);
-        transform = icp.getFinalTransformation();
+        transformation_estimate = icp.getFinalTransformation();
     }
 
     void load_robot()

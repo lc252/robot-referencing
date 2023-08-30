@@ -1,0 +1,13 @@
+<launch>
+
+    <node pkg="registration" type="robot_registration" name="registration_node_node">
+        <rosparam command="load" file="$(find registration)/config/super4pcs.yaml"/>
+        <rosparam command="load" file="$(find registration)/config/fpfh.yaml"/>
+        <rosparam command="load" file="$(find registration)/config/icp.yaml"/>
+        <rosparam command="load" file="$(find registration)/config/process.yaml"/>
+    </node> 
+
+    <node pkg="rviz" type="rviz" name="rviz"/>
+     <!-- args="-d $(find registration)/rviz/registration.rviz"/> -->
+
+</launch>
