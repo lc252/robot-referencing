@@ -16,6 +16,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/features/normal_3d_omp.h>
+#include <pcl/registration/icp.h>
 // pcl super4PCS wrapper
 #include <pcl/registration/super4pcs.h>
 
@@ -78,7 +79,7 @@ private:
         build_robot_cloud();
 
         // Point clouds
-        PointCloudT::Ptr robot_aligned(new PointCloudT);
+        PointCloudT::Ptr aligned_cloud(new PointCloudT);
         PointCloudT::Ptr scene(new PointCloudT);
 
         
@@ -88,13 +89,15 @@ private:
 
         // Downsample
         ROS_INFO("Downsampling Clouds");
-        downsample(scene, 0.01);
+        downsample(scene, 0.02);
+        downsample(robot_cloud, 0.02);
 
         // Estimate normals
         ROS_INFO("Estimating Normals");
-        est_normals(scene, 0.05);
+        est_normals(scene, 0.075);
+        est_normals(robot_cloud, 0.075);
 
-        // Perform alignment
+        // Perform super4pcs alignment
         ROS_INFO("Aligning");
         pcl::Super4PCS<PointNT, PointNT> align; 
         align.setInputSource(scene);
@@ -102,8 +105,18 @@ private:
         align.setOverlap(0.8);
         align.setDelta(0.1);
         align.setSampleSize(200);
-        // align.setTransformationEstimation()
-        align.align(*robot_aligned);
+        align.align(*aligned_cloud);
+
+        // // perform ICP refinement
+        // pcl::IterativeClosestPoint<PointNT, PointNT> icp;
+        // Eigen::Matrix4f estimate = Eigen::Matrix4f::Identity();
+        // icp.setInputSource(aligned_cloud);
+        // icp.setInputTarget(robot_cloud);
+        // // icp.setMaxCorrespondenceDistance(0.05);
+        // // icp.setTransformationEpsilon(1e-8);
+        // // icp.setEuclideanFitnessEpsilon(1e-8);
+        // icp.setMaximumIterations(10000);
+        // icp.align(*aligned_cloud, estimate);
 
         // get the transform matrix Eigen
         Eigen::Matrix4f tf_mat = align.getFinalTransformation();
@@ -121,7 +134,8 @@ private:
         tf_broadcaster.sendTransform(object_alignment_tf);
 
         // Publish ros msg cloud
-        publish_cloud(robot_aligned, "map");
+        publish_cloud(robot_cloud, "map");
+        publish_cloud(aligned_cloud, "map");
     }
 
     void load_robot()
@@ -141,23 +155,6 @@ private:
         pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_4.pcd", *link_4_cloud);
         pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_5.pcd", *link_5_cloud);
         pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_6.pcd", *link_6_cloud);
-
-        // downsample
-        downsample(base_link_cloud, 0.01);
-        downsample(link_1_cloud, 0.01);
-        downsample(link_2_cloud, 0.01);
-        downsample(link_3_cloud, 0.01);
-        downsample(link_4_cloud, 0.01);
-        downsample(link_5_cloud, 0.01);
-        downsample(link_6_cloud, 0.01);
-        // estimate normals
-        est_normals(base_link_cloud, 0.05);
-        est_normals(link_1_cloud, 0.05);
-        est_normals(link_2_cloud, 0.05);
-        est_normals(link_3_cloud, 0.05);
-        est_normals(link_4_cloud, 0.05);
-        est_normals(link_5_cloud, 0.05);
-        est_normals(link_6_cloud, 0.05);
     }
 
     void build_robot_cloud()
@@ -199,7 +196,7 @@ private:
                     break;
             }
 
-            *robot_cloud += *transformed_link_cloud;
+            // *robot_cloud += *transformed_link_cloud;
         }
         *robot_cloud += *base_link_cloud;
     }
@@ -218,6 +215,12 @@ private:
         nest.setRadiusSearch(sr);
         nest.setInputCloud(cloud);
         nest.compute(*cloud);
+    }
+
+    void icp_registration(PointCloudT::Ptr &scene, PointCloudT::Ptr &robot_cloud, PointCloudT::Ptr &aligned_cloud)
+    {
+        // replace cloud_cb with a function
+        ;
     }
 
     void publish_cloud(PointCloudT::Ptr &cloud, std::string frame_id)

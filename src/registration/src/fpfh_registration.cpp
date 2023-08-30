@@ -1,23 +1,30 @@
-// ROS includes
+// ROS 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>
-// tf includes
+
+// TF
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/convert.h>
-// pcl
+
+// PCL
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/filter.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/features/normal_3d_omp.h>
+
+// FPFH
 #include <pcl/features/fpfh_omp.h>
 #include <pcl/registration/sample_consensus_prerejective.h>
+#include <pcl/features/normal_3d_omp.h>
+
+// ICP
+#include <pcl/registration/icp.h>
 
 
 
@@ -93,17 +100,17 @@ private:
 
         // Downsample
         ROS_INFO("Downsampling Clouds");
-        downsample(scene, 0.01);
-        downsample(robot_cloud, 0.01);
+        downsample(scene, 0.005);
+        downsample(robot_cloud, 0.005);
 
         // Estimate normals
         ROS_INFO("Estimating Normals");
-        est_normals(scene, 0.05);
-        est_normals(robot_cloud, 0.05);
+        est_normals(scene, 0.02);
+        est_normals(robot_cloud, 0.02);
 
         // Estimate features
-        est_features(robot_cloud, robot_features, 0.01);
-        est_features(scene, scene_features, 0.01);
+        est_features(robot_cloud, robot_features, 0.02);
+        est_features(scene, scene_features, 0.02);
 
         // Perform alignment
         ROS_INFO("Aligning");
@@ -112,13 +119,24 @@ private:
         align.setSourceFeatures(scene_features);
         align.setInputTarget(robot_cloud);
         align.setTargetFeatures(robot_features);
-        align.setMaximumIterations(30000);               // Number of RANSAC iterations, increase to tradeoff speed for accuracy (50000)
-        align.setNumberOfSamples(10);                     // Number of points to sample for generating/prerejecting a pose, increase to tradeoff speed for accuracy (3)
-        align.setCorrespondenceRandomness(8);            // Number of nearest features to use, increase to tradeoff speed for accuracy (5)
+        align.setMaximumIterations(50000);               // Number of RANSAC iterations, increase to tradeoff speed for accuracy (50000)
+        align.setNumberOfSamples(25);                     // Number of points to sample for generating/prerejecting a pose, increase to tradeoff speed for accuracy (3)
+        align.setCorrespondenceRandomness(15);            // Number of nearest features to use, increase to tradeoff speed for accuracy (5)
         align.setSimilarityThreshold(0.5);              // Polygonal edge length similarity threshold, decrease to tradeoff speed for accuracy (0.9)
-        align.setMaxCorrespondenceDistance(0.5);        // Inlier threshold (2.5 * leaf size)
-        align.setInlierFraction(0.7);                  // Required inlier fraction for accepting a pose hypothesis, increase  (0.25)
+        align.setMaxCorrespondenceDistance(0.01f*0.01f);        // Inlier threshold (2.5 * leaf size)
+        align.setInlierFraction(0.9);                  // Required inlier fraction for accepting a pose hypothesis, increase  (0.25)
         align.align(*robot_aligned);
+
+        // // perform ICP refinement
+        // pcl::IterativeClosestPoint<PointNT, PointNT> icp;
+        // Eigen::Matrix4f estimate = Eigen::Matrix4f::Identity();
+        // icp.setInputSource(robot_aligned);
+        // icp.setInputTarget(robot_cloud);
+        // // icp.setMaxCorrespondenceDistance(0.05);
+        // // icp.setTransformationEpsilon(1e-8);
+        // // icp.setEuclideanFitnessEpsilon(1e-8);
+        // icp.setMaximumIterations(10000);
+        // icp.align(*robot_aligned, estimate);
 
         // get the transform matrix Eigen
         Eigen::Matrix4f tf_mat = align.getFinalTransformation();
@@ -197,7 +215,7 @@ private:
                     break;
             }
 
-            *robot_cloud += *transformed_link_cloud;
+            // *robot_cloud += *transformed_link_cloud;
         }
         *robot_cloud += *base_link_cloud;
     }
