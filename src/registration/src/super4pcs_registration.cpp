@@ -40,11 +40,10 @@ public:
         tf_broadcaster()
     {
         load_robot();
-        robot_cloud = PointCloudT::Ptr(new PointCloudT);
         // allow the tf buffer to fill
         ros::Duration(1.0).sleep();
         build_robot_cloud();
-        publish_cloud(robot_cloud);
+        publish_cloud(robot_cloud, "map");
     };
     
     ~super4pcs_registration_node()
@@ -63,6 +62,7 @@ private:
 
     PointCloudT::Ptr scene_cloud;
     PointCloudT::Ptr robot_cloud;
+
     PointCloudT::Ptr base_link_cloud;
     PointCloudT::Ptr link_1_cloud;
     PointCloudT::Ptr link_2_cloud;
@@ -70,6 +70,7 @@ private:
     PointCloudT::Ptr link_4_cloud;
     PointCloudT::Ptr link_5_cloud;
     PointCloudT::Ptr link_6_cloud;
+    PointCloudT::Ptr transformed_link_cloud;
 
 
     void cloud_cb(sensor_msgs::PointCloud2 cloud_in)
@@ -96,11 +97,12 @@ private:
         // Perform alignment
         ROS_INFO("Aligning");
         pcl::Super4PCS<PointNT, PointNT> align; 
-        align.setInputSource(robot_cloud);
-        align.setInputTarget(scene);
-        align.setOverlap(0.5);
+        align.setInputSource(scene);
+        align.setInputTarget(robot_cloud);
+        align.setOverlap(0.8);
         align.setDelta(0.1);
-        align.setSampleSize(100);
+        align.setSampleSize(200);
+        // align.setTransformationEstimation()
         align.align(*robot_aligned);
 
         // get the transform matrix Eigen
@@ -119,7 +121,7 @@ private:
         tf_broadcaster.sendTransform(object_alignment_tf);
 
         // Publish ros msg cloud
-        publish_cloud(robot_aligned);
+        publish_cloud(robot_aligned, "map");
     }
 
     void load_robot()
@@ -160,6 +162,10 @@ private:
 
     void build_robot_cloud()
     {
+        ROS_INFO("Building Robot Cloud");
+
+        robot_cloud = PointCloudT::Ptr(new PointCloudT);
+        transformed_link_cloud = PointCloudT::Ptr(new PointCloudT);
 
         for (int link_index = 1; link_index <= 6; ++link_index) 
         {
@@ -171,36 +177,29 @@ private:
             Eigen::Vector3f t_link(tf_link.transform.translation.x, tf_link.transform.translation.y, tf_link.transform.translation.z);
             Eigen::Quaternionf q_link(tf_link.transform.rotation.w, tf_link.transform.rotation.x, tf_link.transform.rotation.y, tf_link.transform.rotation.z);
 
-            ROS_INFO("Transforming %s", link_name.c_str());
-
             switch (link_index)
             {
                 case 1:
-                    pcl::transformPointCloud(*link_1_cloud, *link_1_cloud, t_link, q_link);
-                    *robot_cloud += *link_1_cloud;
+                    pcl::transformPointCloud(*link_1_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
                 case 2:
-                    pcl::transformPointCloud(*link_2_cloud, *link_2_cloud, t_link, q_link);
-                    *robot_cloud += *link_2_cloud;
+                    pcl::transformPointCloud(*link_2_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
                 case 3:
-                    pcl::transformPointCloud(*link_3_cloud, *link_3_cloud, t_link, q_link);
-                    *robot_cloud += *link_3_cloud;
+                    pcl::transformPointCloud(*link_3_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
                 case 4:
-                    pcl::transformPointCloud(*link_4_cloud, *link_4_cloud, t_link, q_link);
-                    *robot_cloud += *link_4_cloud;
+                    pcl::transformPointCloud(*link_4_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
                 case 5:
-                    pcl::transformPointCloud(*link_5_cloud, *link_5_cloud, t_link, q_link);
-                    *robot_cloud += *link_5_cloud;
+                    pcl::transformPointCloud(*link_5_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
                 case 6:
-                    pcl::transformPointCloud(*link_6_cloud, *link_6_cloud, t_link, q_link);
-                    *robot_cloud += *link_6_cloud;
+                    pcl::transformPointCloud(*link_6_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
             }
-        
+
+            *robot_cloud += *transformed_link_cloud;
         }
         *robot_cloud += *base_link_cloud;
     }
@@ -221,11 +220,11 @@ private:
         nest.compute(*cloud);
     }
 
-    void publish_cloud(PointCloudT::Ptr &cloud)
+    void publish_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
     {
         sensor_msgs::PointCloud2 ros_cloud;
         pcl::toROSMsg(*cloud, ros_cloud);
-        ros_cloud.header.frame_id = "map";
+        ros_cloud.header.frame_id = frame_id;
         // Publish clouds
         cloud_pub.publish(ros_cloud);
     }
@@ -233,98 +232,6 @@ private:
 };
 
 
-
-/*
-// Publishers
-ros::Publisher object_aligned_pub;
-
-void downsample(PointCloudT::Ptr &cloud)
-{
-    float leaf_size;
-    ros::param::get("leaf_size", leaf_size);
-    pcl::VoxelGrid<PointNT> grid;
-    grid.setLeafSize(leaf_size, leaf_size, leaf_size);
-    grid.setInputCloud(cloud);
-    grid.filter(*cloud);
-}
-
-void est_normals(PointCloudT::Ptr &cloud)
-{
-    float sr;
-    ros::param::get("normal_SearchRadius", sr);
-    pcl::NormalEstimationOMP<PointNT, PointNT> nest;
-    nest.setRadiusSearch(0.01);
-    nest.setInputCloud(cloud);
-    nest.compute(*cloud);
-}
-
-void publish_cloud(PointCloudT::Ptr &cloud)
-{
-    sensor_msgs::PointCloud2 ros_cloud;
-    pcl::toROSMsg(*cloud, ros_cloud);
-    ros_cloud.header.frame_id = "camera_color_optical_frame";
-    // Publish clouds
-    object_aligned_pub.publish(ros_cloud);
-}
-
-void register_object_cb(sensor_msgs::PointCloud2 cloud)
-{
-    // Point clouds
-    PointCloudT::Ptr object(new PointCloudT);
-    PointCloudT::Ptr object_aligned(new PointCloudT);
-    PointCloudT::Ptr scene(new PointCloudT);
-
-    
-    // load clouds
-    ROS_INFO("Loading Clouds");
-    pcl::fromROSMsg(cloud, *scene);
-    pcl::io::loadPCDFile<PointNT>("/home/lachl/inference-2d-3d/src/object_detection/model_geometry/model_car_scaled_normal.pcd", *object);
-
-    // Downsample
-    ROS_INFO("Downsampling Clouds");
-    downsample(scene);
-    downsample(object);
-
-    // Estimate normals
-    ROS_INFO("Estimating Normals");
-    est_normals(scene);
-    est_normals(object);
-
-    // Perform alignment
-    ROS_INFO("Aligning");
-    float overlap, delta, samples;
-    ros::param::get("overlap", overlap);
-    ros::param::get("delta", delta);
-    ros::param::get("samples", samples);
-    pcl::Super4PCS<PointNT, PointNT> align; 
-    align.setInputSource(object);
-    align.setInputTarget(scene);
-    align.setOverlap(overlap);
-    align.setDelta(delta);
-    align.setSampleSize(samples);
-    align.align(*object_aligned);
-
-    // get the transform matrix Eigen
-    Eigen::Matrix4f tf_mat = align.getFinalTransformation();
-    // cast to type that tf2_eigen accepts
-    Eigen::Affine3d transformation;  
-    transformation.matrix() = tf_mat.cast<double>();
-
-    // create transform TF
-    geometry_msgs::TransformStamped object_alignment_tf;
-    object_alignment_tf = tf2::eigenToTransform(transformation);
-    object_alignment_tf.header.stamp = ros::Time::now();
-    object_alignment_tf.header.frame_id = "camera_color_optical_frame";
-    object_alignment_tf.child_frame_id = "object";
-    // broadcast
-    static tf::TransformBroadcaster br;
-    br.sendTransform(object_alignment_tf);
-
-    // Publish ros msg cloud
-    publish_cloud(object_aligned);
-}
-
-*/
 
 int main(int argc, char** argv)
 {
