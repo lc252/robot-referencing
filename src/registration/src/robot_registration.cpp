@@ -153,16 +153,16 @@ private:
 
         
         // load cloud
-        ROS_INFO("Loading Cloud");
+        pcl::console::print_debug("[PCL] Loading Cloud\n");
         pcl::fromROSMsg(cloud_in, *scene);
 
         // Downsample
-        ROS_INFO("Downsampling Clouds");
+        pcl::console::print_debug("[PCL] Downsampling Clouds\n");
         downsample(scene, 0.005);
         downsample(robot_cloud, 0.005);
 
         // Estimate normals
-        ROS_INFO("Estimating Normals");
+        pcl::console::print_debug("[PCL] Estimating Normals\n");
         est_normals(scene, 0.02);
         est_normals(robot_cloud, 0.02);
 
@@ -205,7 +205,7 @@ private:
     void super4pcs_register(PointCloudT::Ptr &source_cloud)
     {
         // Perform super4pcs alignment
-        ROS_INFO("Aligning Super4pcs");
+        pcl::console::print_debug("[PCL] Aligning Super4pcs\n");
 
         pcl::Super4PCS<PointNT, PointNT> super4pcs; 
         super4pcs.setInputSource(source_cloud);
@@ -228,7 +228,7 @@ private:
          * setMaxCorrespondenceDistance: Inlier threshold (2.5 * leaf size)
          * setInlierFraction: Required inlier fraction for accepting a pose hypothesis, increase  (0.25)
          */
-        ROS_INFO("Aligning FPFH");
+        pcl::console::print_debug("[PCL] Aligning FPFH\n");
 
         pcl::SampleConsensusPrerejective<PointNT, PointNT, FeatureT> fpfh;
         fpfh.setInputSource(source_cloud);
@@ -248,7 +248,7 @@ private:
     void icp_refine(PointCloudT::Ptr &source_cloud)
     {
         // perform ICP refinement
-        ROS_INFO("Aligning ICP");
+        pcl::console::print_debug("[PCL] Aligning ICP\n");
 
         pcl::IterativeClosestPoint<PointNT, PointNT> icp;
         icp.setInputSource(source_cloud);
@@ -282,7 +282,7 @@ private:
 
     void build_robot_cloud()
     {
-        ROS_INFO("Building Robot Cloud");
+        pcl::console::print_debug("[PCL] Building Robot Cloud");
 
         robot_cloud = PointCloudT::Ptr(new PointCloudT);
         transformed_link_cloud = PointCloudT::Ptr(new PointCloudT);
@@ -365,6 +365,7 @@ private:
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "robot_registration_node");
+    pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
 
     robot_registration_node node;
 
