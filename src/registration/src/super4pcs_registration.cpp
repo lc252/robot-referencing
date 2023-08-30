@@ -95,10 +95,6 @@ private:
 
         // Perform alignment
         ROS_INFO("Aligning");
-        float overlap, delta, samples;
-        ros::param::get("overlap", overlap);
-        ros::param::get("delta", delta);
-        ros::param::get("samples", samples);
         pcl::Super4PCS<PointNT, PointNT> align; 
         align.setInputSource(robot_cloud);
         align.setInputTarget(scene);
