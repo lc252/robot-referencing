@@ -72,10 +72,58 @@ private:
     PointCloudT::Ptr link_6_cloud;
 
 
-    void cloud_cb(sensor_msgs::PointCloud2 cloud)
+    void cloud_cb(sensor_msgs::PointCloud2 cloud_in)
     {
         build_robot_cloud();
-        publish_cloud(robot_cloud);
+
+        // Point clouds
+        PointCloudT::Ptr robot_aligned(new PointCloudT);
+        PointCloudT::Ptr scene(new PointCloudT);
+
+        
+        // load cloud
+        ROS_INFO("Loading Cloud");
+        pcl::fromROSMsg(cloud_in, *scene);
+
+        // Downsample
+        ROS_INFO("Downsampling Clouds");
+        downsample(scene, 0.01);
+
+        // Estimate normals
+        ROS_INFO("Estimating Normals");
+        est_normals(scene, 0.05);
+
+        // Perform alignment
+        ROS_INFO("Aligning");
+        float overlap, delta, samples;
+        ros::param::get("overlap", overlap);
+        ros::param::get("delta", delta);
+        ros::param::get("samples", samples);
+        pcl::Super4PCS<PointNT, PointNT> align; 
+        align.setInputSource(robot_cloud);
+        align.setInputTarget(scene);
+        align.setOverlap(0.5);
+        align.setDelta(0.1);
+        align.setSampleSize(100);
+        align.align(*robot_aligned);
+
+        // get the transform matrix Eigen
+        Eigen::Matrix4f tf_mat = align.getFinalTransformation();
+        // cast to type that tf2_eigen accepts
+        Eigen::Affine3d transformation;  
+        transformation.matrix() = tf_mat.cast<double>();
+
+        // create transform TF
+        geometry_msgs::TransformStamped object_alignment_tf;
+        object_alignment_tf = tf2::eigenToTransform(transformation);
+        object_alignment_tf.header.stamp = ros::Time::now();
+        object_alignment_tf.header.frame_id = "camera_color_optical_frame";
+        object_alignment_tf.child_frame_id = "object";
+        // broadcast
+        tf_broadcaster.sendTransform(object_alignment_tf);
+
+        // Publish ros msg cloud
+        publish_cloud(robot_aligned);
     }
 
     void load_robot()
