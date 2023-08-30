@@ -2,8 +2,8 @@
   "icp" :
   {
     "MaximumIterations": 1000,
-    "EuclideanFitnessEpsilon": 0.0001,
-    "TransformationEpsilon": 0.0001,
+    "EuclideanFitnessEpsilon": 0.1,
+    "TransformationEpsilon": 0.1,
     "MaxCorrespondenceDistance": 0.05, 
   }
 }

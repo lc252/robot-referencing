@@ -167,6 +167,7 @@ private:
         est_normals(robot_cloud, normal_radius_search);
 
         // Estimate features
+        ROS_INFO("Estimating Features\n");
         est_features(robot_cloud, robot_features, feature_radius_search);
         est_features(scene, scene_features, feature_radius_search);
 
