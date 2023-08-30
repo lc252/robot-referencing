@@ -153,16 +153,16 @@ private:
 
         
         // load cloud
-        pcl::console::print_debug("[PCL] Loading Cloud\n");
+        ROS_INFO("Loading Cloud\n");
         pcl::fromROSMsg(cloud_in, *scene);
 
         // Downsample
-        pcl::console::print_debug("[PCL] Downsampling Clouds\n");
+        ROS_INFO("Downsampling Clouds\n");
         downsample(scene, downsample_leaf_size);
         downsample(robot_cloud, downsample_leaf_size);
 
         // Estimate normals
-        pcl::console::print_debug("[PCL] Estimating Normals\n");
+        ROS_INFO("Estimating Normals\n");
         est_normals(scene, normal_radius_search);
         est_normals(robot_cloud, normal_radius_search);
 
@@ -185,27 +185,17 @@ private:
             icp_refine(scene);
         }
 
-        // cast to type that tf2_eigen accepts
-        Eigen::Affine3d transformation;  
-        transformation.matrix() = transformation_estimate.cast<double>();
-
-        // create transform TF
-        geometry_msgs::TransformStamped object_alignment_tf;
-        object_alignment_tf = tf2::eigenToTransform(transformation);
-        object_alignment_tf.header.stamp = ros::Time::now();
-        object_alignment_tf.header.frame_id = "map";
-        object_alignment_tf.child_frame_id = "aligned";
-        // broadcast
-        tf_broadcaster.sendTransform(object_alignment_tf);
+        // Broadcast tf
+        broadcast_tf("map", "aligned");
 
         // Publish ros msg cloud
-        publish_cloud(robot_aligned, "map");
+        publish_cloud(scene, "map");
     }
 
     void super4pcs_register(PointCloudT::Ptr &source_cloud)
     {
         // Perform super4pcs alignment
-        pcl::console::print_debug("[PCL] Aligning Super4pcs\n");
+        ROS_INFO("Aligning Super4pcs\n");
 
         pcl::Super4PCS<PointNT, PointNT> super4pcs; 
         super4pcs.setInputSource(source_cloud);
@@ -228,7 +218,7 @@ private:
          * setMaxCorrespondenceDistance: Inlier threshold (2.5 * leaf size)
          * setInlierFraction: Required inlier fraction for accepting a pose hypothesis, increase  (0.25)
          */
-        pcl::console::print_debug("[PCL] Aligning FPFH\n");
+        ROS_INFO("Aligning FPFH\n");
 
         pcl::SampleConsensusPrerejective<PointNT, PointNT, FeatureT> fpfh;
         fpfh.setInputSource(source_cloud);
@@ -248,7 +238,7 @@ private:
     void icp_refine(PointCloudT::Ptr &source_cloud)
     {
         // perform ICP refinement
-        pcl::console::print_debug("[PCL] Aligning ICP\n");
+        ROS_INFO("Aligning ICP\n");
 
         pcl::IterativeClosestPoint<PointNT, PointNT> icp;
         icp.setInputSource(source_cloud);
@@ -282,7 +272,7 @@ private:
 
     void build_robot_cloud()
     {
-        pcl::console::print_debug("[PCL] Building Robot Cloud");
+        ROS_INFO("Building Robot Cloud\n");
 
         robot_cloud = PointCloudT::Ptr(new PointCloudT);
         transformed_link_cloud = PointCloudT::Ptr(new PointCloudT);
@@ -358,6 +348,21 @@ private:
         cloud_pub.publish(ros_cloud);
     }
 
+    void broadcast_tf(std::string parent_frame, std::string child_frame)
+    {
+        // cast to type that tf2_eigen accepts
+        Eigen::Affine3d transformation;  
+        transformation.matrix() = transformation_estimate.cast<double>();
+        // create transform TF
+        geometry_msgs::TransformStamped object_alignment_tf;
+        object_alignment_tf = tf2::eigenToTransform(transformation);
+        object_alignment_tf.header.stamp = ros::Time::now();
+        object_alignment_tf.header.frame_id = parent_frame;
+        object_alignment_tf.child_frame_id = child_frame;
+        // broadcast
+        tf_broadcaster.sendTransform(object_alignment_tf);
+    }
+
 };
 
 
@@ -365,8 +370,6 @@ private:
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "robot_registration_node");
-    pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
-
     robot_registration_node node;
 
     ros::spin();
