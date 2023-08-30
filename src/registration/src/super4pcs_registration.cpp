@@ -113,8 +113,8 @@ private:
         geometry_msgs::TransformStamped object_alignment_tf;
         object_alignment_tf = tf2::eigenToTransform(transformation);
         object_alignment_tf.header.stamp = ros::Time::now();
-        object_alignment_tf.header.frame_id = "camera_color_optical_frame";
-        object_alignment_tf.child_frame_id = "object";
+        object_alignment_tf.header.frame_id = "map";
+        object_alignment_tf.child_frame_id = "aligned";
         // broadcast
         tf_broadcaster.sendTransform(object_alignment_tf);
 
