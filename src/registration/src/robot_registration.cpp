@@ -1,0 +1,320 @@
+// ROS 
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <pcl_conversions/pcl_conversions.h>
+
+// TF
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2/convert.h>
+
+// PCL
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/filter.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/transforms.h>
+#include <pcl/filters/voxel_grid.h>
+
+// FPFH
+#include <pcl/features/fpfh_omp.h>
+#include <pcl/registration/sample_consensus_prerejective.h>
+#include <pcl/features/normal_3d_omp.h>
+
+// Super4PCS wrapper
+#include <pcl/registration/super4pcs.h>
+
+// ICP
+#include <pcl/registration/icp.h>
+
+
+
+// Types
+typedef pcl::PointNormal PointNT;
+typedef pcl::PointCloud<PointNT> PointCloudT;
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloudXYZ;
+typedef pcl::FPFHSignature33 FeatureT;
+typedef pcl::FPFHEstimationOMP<PointNT, PointNT, FeatureT> FeatureEstimationT;
+typedef pcl::PointCloud<FeatureT> FeatureCloudT;
+
+
+
+class robot_registration_node
+{
+public:
+    robot_registration_node():
+        nh{},
+        cloud_sub(nh.subscribe("cloud_in", 1, &robot_registration_node::cloud_cb, this)),
+        cloud_pub(nh.advertise<sensor_msgs::PointCloud2>("cloud_out", 1)),
+        tf_buffer(),
+        tf_listener(tf_buffer),
+        tf_broadcaster()
+    {
+        load_robot();
+        // allow the tf buffer to fill
+        ros::Duration(1.0).sleep();
+        build_robot_cloud();
+        publish_cloud(robot_cloud, "map");
+    };
+    
+    ~robot_registration_node()
+    {
+        ;
+    }
+
+private:
+    ros::NodeHandle nh;
+    ros::Subscriber cloud_sub;
+    ros::Publisher cloud_pub;
+    
+    tf2_ros::Buffer tf_buffer;
+    tf2_ros::TransformListener tf_listener;
+    tf2_ros::TransformBroadcaster tf_broadcaster;
+
+    PointCloudT::Ptr scene_cloud;
+    PointCloudT::Ptr robot_cloud;
+
+    PointCloudT::Ptr base_link_cloud;
+    PointCloudT::Ptr link_1_cloud;
+    PointCloudT::Ptr link_2_cloud;
+    PointCloudT::Ptr link_3_cloud;
+    PointCloudT::Ptr link_4_cloud;
+    PointCloudT::Ptr link_5_cloud;
+    PointCloudT::Ptr link_6_cloud;
+    PointCloudT::Ptr transformed_link_cloud;
+
+    Eigen::Matrix4f transform;
+
+
+    void cloud_cb(sensor_msgs::PointCloud2 cloud_in)
+    {
+        build_robot_cloud();
+
+        // Point clouds
+        PointCloudT::Ptr robot_aligned(new PointCloudT);
+        PointCloudT::Ptr scene(new PointCloudT);
+        FeatureCloudT::Ptr robot_features(new FeatureCloudT);
+        FeatureCloudT::Ptr scene_features(new FeatureCloudT);
+
+        
+        // load cloud
+        ROS_INFO("Loading Cloud");
+        pcl::fromROSMsg(cloud_in, *scene);
+
+        // Downsample
+        ROS_INFO("Downsampling Clouds");
+        downsample(scene, 0.005);
+        downsample(robot_cloud, 0.005);
+
+        // Estimate normals
+        ROS_INFO("Estimating Normals");
+        est_normals(scene, 0.02);
+        est_normals(robot_cloud, 0.02);
+
+        // Estimate features
+        est_features(robot_cloud, robot_features, 0.02);
+        est_features(scene, scene_features, 0.02);
+
+        // Perform alignment
+        if (use_super4pcs)
+        {
+            super4pcs_register(scene);
+        }
+        else
+        {
+            fpfh_register(scene, scene_features, robot_features);
+        }
+
+        if (use_icp)
+        {
+            icp_refine(scene);
+        }
+
+        // cast to type that tf2_eigen accepts
+        Eigen::Affine3d transformation;  
+        transformation.matrix() = transform.cast<double>();
+
+        // create transform TF
+        geometry_msgs::TransformStamped object_alignment_tf;
+        object_alignment_tf = tf2::eigenToTransform(transformation);
+        object_alignment_tf.header.stamp = ros::Time::now();
+        object_alignment_tf.header.frame_id = "map";
+        object_alignment_tf.child_frame_id = "aligned";
+        // broadcast
+        tf_broadcaster.sendTransform(object_alignment_tf);
+
+        // Publish ros msg cloud
+        publish_cloud(robot_aligned, "map");
+    }
+
+    void super4pcs_register(PointCloudT::Ptr &source_cloud)
+    {
+        // Perform super4pcs alignment
+        ROS_INFO("Aligning Super4pcs");
+
+        pcl::Super4PCS<PointNT, PointNT> super4pcs; 
+        super4pcs.setInputSource(source_cloud);
+        super4pcs.setInputTarget(robot_cloud);
+        super4pcs.setOverlap(0.8);
+        super4pcs.setDelta(0.1);
+        super4pcs.setSampleSize(200);
+        super4pcs.align(*source_cloud);
+        transform = super4pcs.getFinalTransformation();
+    }
+
+    void fpfh_register(PointCloudT::Ptr &source_cloud, FeatureCloudT::Ptr &source_features, FeatureCloudT::Ptr &robot_features)
+    {
+        // Perform FPFH alignment
+        /* Parameters
+         * MaximumIterations: Number of RANSAC iterations, increase to tradeoff speed for accuracy (50000)
+         * NumberOfSamplesNumber: Number of points to sample for generating/prerejecting a pose, increase to tradeoff speed for accuracy (3)
+         * CorrespondenceRandomness: Number of nearest features to use, increase to tradeoff speed for accuracy (5)
+         * setSimilarityThreshold: Polygonal edge length similarity threshold, decrease to tradeoff speed for accuracy (0.9)
+         * setMaxCorrespondenceDistance: Inlier threshold (2.5 * leaf size)
+         * setInlierFraction: Required inlier fraction for accepting a pose hypothesis, increase  (0.25)
+         */
+        ROS_INFO("Aligning FPFH");
+
+        pcl::SampleConsensusPrerejective<PointNT, PointNT, FeatureT> fpfh;
+        fpfh.setInputSource(source_cloud);
+        fpfh.setSourceFeatures(source_features);
+        fpfh.setInputTarget(robot_cloud);
+        fpfh.setTargetFeatures(robot_features);
+        fpfh.setMaximumIterations(50000);
+        fpfh.setNumberOfSamples(25);
+        fpfh.setCorrespondenceRandomness(15);
+        fpfh.setSimilarityThreshold(0.5);
+        fpfh.setMaxCorrespondenceDistance(0.01f*0.01f);
+        fpfh.setInlierFraction(0.9);
+        fpfh.align(*source_cloud);
+    }
+
+    void icp_refine(PointCloudT::Ptr &source_cloud)
+    {
+        // perform ICP refinement
+        ROS_INFO("Aligning ICP");
+
+        pcl::IterativeClosestPoint<PointNT, PointNT> icp;
+        icp.setInputSource(source_cloud);
+        icp.setInputTarget(robot_cloud);
+        // icp.setMaxCorrespondenceDistance(0.05);
+        // icp.setTransformationEpsilon(1e-8);
+        // icp.setEuclideanFitnessEpsilon(1e-8);
+        icp.setMaximumIterations(10000);
+        icp.align(*source_cloud);
+        transform = icp.getFinalTransformation();
+    }
+
+    void load_robot()
+    {
+        // load clouds
+        base_link_cloud = PointCloudT::Ptr(new PointCloudT);
+        link_1_cloud = PointCloudT::Ptr(new PointCloudT);
+        link_2_cloud = PointCloudT::Ptr(new PointCloudT);
+        link_3_cloud = PointCloudT::Ptr(new PointCloudT);
+        link_4_cloud = PointCloudT::Ptr(new PointCloudT);
+        link_5_cloud = PointCloudT::Ptr(new PointCloudT);
+        link_6_cloud = PointCloudT::Ptr(new PointCloudT);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/base_link.pcd", *base_link_cloud);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_1.pcd", *link_1_cloud);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_2.pcd", *link_2_cloud);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_3.pcd", *link_3_cloud);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_4.pcd", *link_4_cloud);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_5.pcd", *link_5_cloud);
+        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_6.pcd", *link_6_cloud);
+    }
+
+    void build_robot_cloud()
+    {
+        ROS_INFO("Building Robot Cloud");
+
+        robot_cloud = PointCloudT::Ptr(new PointCloudT);
+        transformed_link_cloud = PointCloudT::Ptr(new PointCloudT);
+
+        for (int link_index = 1; link_index <= 6; ++link_index) 
+        {
+            std::string link_name = "link_" + std::to_string(link_index);
+
+            geometry_msgs::TransformStamped tf_link;
+            tf_link = tf_buffer.lookupTransform("base_link", link_name, ros::Time(0));
+
+            Eigen::Vector3f t_link(tf_link.transform.translation.x, tf_link.transform.translation.y, tf_link.transform.translation.z);
+            Eigen::Quaternionf q_link(tf_link.transform.rotation.w, tf_link.transform.rotation.x, tf_link.transform.rotation.y, tf_link.transform.rotation.z);
+
+            switch (link_index)
+            {
+                case 1:
+                    pcl::transformPointCloud(*link_1_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 2:
+                    pcl::transformPointCloud(*link_2_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 3:
+                    pcl::transformPointCloud(*link_3_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 4:
+                    pcl::transformPointCloud(*link_4_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 5:
+                    pcl::transformPointCloud(*link_5_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 6:
+                    pcl::transformPointCloud(*link_6_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+            }
+
+            // *robot_cloud += *transformed_link_cloud;
+        }
+        *robot_cloud += *base_link_cloud;
+    }
+
+    void downsample(PointCloudT::Ptr &cloud, float leaf_size)
+    {
+        pcl::VoxelGrid<PointNT> grid;
+        grid.setLeafSize(leaf_size, leaf_size, leaf_size);
+        grid.setInputCloud(cloud);
+        grid.filter(*cloud);
+    }
+
+    void est_normals(PointCloudT::Ptr &cloud, float sr)
+    {
+        pcl::NormalEstimationOMP<PointNT, PointNT> nest;
+        nest.setRadiusSearch(sr);
+        nest.setInputCloud(cloud);
+        nest.compute(*cloud);
+    }
+
+    void est_features(PointCloudT::Ptr &cloud, FeatureCloudT::Ptr &features, float sr)
+    {
+        FeatureEstimationT fest;
+        fest.setRadiusSearch(sr);
+        fest.setInputCloud(cloud);
+        fest.setInputNormals(cloud);
+        fest.compute(*features);
+    }
+
+    void publish_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
+    {
+        sensor_msgs::PointCloud2 ros_cloud;
+        pcl::toROSMsg(*cloud, ros_cloud);
+        ros_cloud.header.frame_id = frame_id;
+        // Publish clouds
+        cloud_pub.publish(ros_cloud);
+    }
+
+};
+
+
+
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "robot_registration_node");
+
+    robot_registration_node node;
+
+    ros::spin();
+
+    return (0);
+}
