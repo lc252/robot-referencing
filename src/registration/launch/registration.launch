@@ -1,6 +1,6 @@
 <launch>
 
-    <node pkg="registration" type="robot_registration" name="registration_node_node" output="screen">
+    <node pkg="registration" type="robot_registration" name="registration_node" output="screen">
         <rosparam command="load" file="$(find registration)/config/super4pcs.yaml"/>
         <rosparam command="load" file="$(find registration)/config/fpfh.yaml"/>
         <rosparam command="load" file="$(find registration)/config/icp.yaml"/>
