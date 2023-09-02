@@ -1,0 +1,36 @@
+{
+  "use_super4pcs": false,
+  "use_fpfh": true,
+  "use_icp": false,
+  "process" :
+  {
+    "downsample_leaf_size": 0.005,
+    "normal_SearchRadius": 0.005,
+    "features_SearchRadius": 0.005
+  },
+
+  "fpfh" :
+  {
+    "MaximumIterations": 100000,
+    "NumberOfSamples": 25,
+    "CorrespondenceRandomness": 15,
+    "SimilarityThreshold": 0.7,
+    "MaxCorrespondenceDistance": 0.0125,
+    "InlierFraction": 0.7  
+  },
+
+  "super4pcs" :
+  {
+    "overlap": 0.8,
+    "delta": 0.1,
+    "samples": 200
+  },
+
+  "icp" :
+  {
+    "MaximumIterations": 100000,
+    "EuclideanFitnessEpsilon": 0.1,
+    "TransformationEpsilon": 0.1,
+    "MaxCorrespondenceDistance": 0.05, 
+  }
+}
