@@ -59,12 +59,11 @@ public:
         publish_cloud(robot_cloud, "map");
 
         // get params
-        ros::param::get("~use_super4pcs", use_super4pcs);
-        ros::param::get("~use_icp", use_icp);
         ros::param::get("~process/downsample_leaf_size", downsample_leaf_size);
         ros::param::get("~process/normal_radius_search", normal_radius_search);
         ros::param::get("~process/feature_radius_search", feature_radius_search);
 
+        ros::param::get("~use_fpfh", use_fpfh);
         ros::param::get("~fpfh/max_fpfh_iterations", max_fpfh_iterations);
         ros::param::get("~fpfh/fpfh_samples", fpfh_samples);
         ros::param::get("~fpfh/correspondence_randomness", correspondence_randomness);
@@ -72,10 +71,12 @@ public:
         ros::param::get("~fpfh/max_correspondence_distance", max_correspondence_distance_fpfh);
         ros::param::get("~fpfh/inlier_fraction", inlier_fraction);
 
+        ros::param::get("~use_super4pcs", use_super4pcs);
         ros::param::get("~super4pcs/overlap", overlap);
         ros::param::get("~super4pcs/delta", delta);
         ros::param::get("~super4pcs/super4pcs_samples", super4pcs_samples);
 
+        ros::param::get("~use_icp", use_icp);
         ros::param::get("~icp/max_icp_iterations", max_icp_iterations);
         ros::param::get("~icp/max_correspondence_distance_icp", max_correspondence_distance_icp);
         ros::param::get("~icp/transformation_epsilon", transformation_epsilon);
@@ -119,6 +120,7 @@ private:
     // params
     // process
     bool use_super4pcs;
+    bool use_fpfh;
     bool use_icp;
     float downsample_leaf_size;
     float normal_radius_search;
@@ -166,18 +168,19 @@ private:
         est_normals(scene, normal_radius_search);
         est_normals(robot_cloud, normal_radius_search);
 
-        // Estimate features
-        ROS_INFO("Estimating Features\n");
-        est_features(robot_cloud, robot_features, feature_radius_search);
-        est_features(scene, scene_features, feature_radius_search);
-
         // Perform alignment
         if (use_super4pcs)
         {
             super4pcs_register(scene);
         }
-        else
+
+        if (use_fpfh)
         {
+            // Estimate features
+            ROS_INFO("Estimating Features\n");
+            est_features(robot_cloud, robot_features, feature_radius_search);
+            est_features(scene, scene_features, feature_radius_search);
+            
             fpfh_register(scene, scene_features, robot_features);
         }
 
@@ -244,9 +247,9 @@ private:
         pcl::IterativeClosestPoint<PointNT, PointNT> icp;
         icp.setInputSource(source_cloud);
         icp.setInputTarget(robot_cloud);
-        icp.setMaxCorrespondenceDistance(max_correspondence_distance_icp);
-        icp.setTransformationEpsilon(transformation_epsilon);
-        icp.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon);
+        // icp.setMaxCorrespondenceDistance(max_correspondence_distance_icp);
+        // icp.setTransformationEpsilon(transformation_epsilon);
+        // icp.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon);
         icp.setMaximumIterations(max_icp_iterations);
         icp.align(*source_cloud);
         transformation_estimate = icp.getFinalTransformation();
@@ -290,29 +293,29 @@ private:
 
             switch (link_index)
             {
-                case 1:
-                    pcl::transformPointCloud(*link_1_cloud, *transformed_link_cloud, t_link, q_link);
-                    break;
+                // case 1:
+                //     pcl::transformPointCloud(*link_1_cloud, *transformed_link_cloud, t_link, q_link);
+                //     break;
                 case 2:
                     pcl::transformPointCloud(*link_2_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
-                case 3:
-                    pcl::transformPointCloud(*link_3_cloud, *transformed_link_cloud, t_link, q_link);
-                    break;
-                case 4:
-                    pcl::transformPointCloud(*link_4_cloud, *transformed_link_cloud, t_link, q_link);
-                    break;
-                case 5:
-                    pcl::transformPointCloud(*link_5_cloud, *transformed_link_cloud, t_link, q_link);
-                    break;
-                case 6:
-                    pcl::transformPointCloud(*link_6_cloud, *transformed_link_cloud, t_link, q_link);
-                    break;
+                // case 3:
+                //     pcl::transformPointCloud(*link_3_cloud, *transformed_link_cloud, t_link, q_link);
+                //     break;
+                // case 4:
+                //     pcl::transformPointCloud(*link_4_cloud, *transformed_link_cloud, t_link, q_link);
+                //     break;
+                // case 5:
+                //     pcl::transformPointCloud(*link_5_cloud, *transformed_link_cloud, t_link, q_link);
+                //     break;
+                // case 6:
+                //     pcl::transformPointCloud(*link_6_cloud, *transformed_link_cloud, t_link, q_link);
+                //     break;
             }
 
-            // *robot_cloud += *transformed_link_cloud;
+            *robot_cloud += *transformed_link_cloud;
         }
-        *robot_cloud += *base_link_cloud;
+        // *robot_cloud += *base_link_cloud;
     }
 
     void downsample(PointCloudT::Ptr &cloud, float leaf_size)
