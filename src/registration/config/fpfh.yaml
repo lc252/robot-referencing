@@ -1,0 +1,11 @@
+{
+  "fpfh" :
+  {
+    "MaximumIterations": 100000,
+    "NumberOfSamples": 25,
+    "CorrespondenceRandomness": 15,
+    "SimilarityThreshold": 0.7,
+    "MaxCorrespondenceDistance": 0.0125,
+    "InlierFraction": 0.7  
+  }
+}
