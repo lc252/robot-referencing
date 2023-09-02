@@ -54,14 +54,14 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
+        Max Value: 0.3286917209625244
+        Min Value: 0.1724015474319458
         Value: true
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -88,8 +88,8 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color: 0; 255; 0
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -99,7 +99,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 2
       Size (m): 0.009999999776482582
       Style: Points
       Topic: /cloud_out
@@ -114,6 +114,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        aligned:
+          Value: true
         base:
           Value: false
         base_link:
@@ -144,6 +146,8 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
+          aligned:
+            {}
           base_link:
             base:
               {}
@@ -249,7 +253,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.9183852672576904
+      Distance: 2.665816307067871
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -265,9 +269,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.565398097038269
+      Pitch: 0.6353980302810669
       Target Frame: <Fixed Frame>
-      Yaw: 0.6553982496261597
+      Yaw: 0.3303980231285095
     Saved: ~
 Window Geometry:
   Displays:
@@ -285,5 +289,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: -32
-  Y: -32
+  X: -26
+  Y: 42
