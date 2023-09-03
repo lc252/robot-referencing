@@ -1,6 +1,6 @@
 <launch>
 
-    <node pkg="registration" type="robot_registration" name="registration_node_node" output="screen">
+    <node pkg="registration" type="robot_registration" name="registration_node" output="screen">
         <rosparam command="load" file="$(find registration)/config/super4pcs.yaml"/>
         <rosparam command="load" file="$(find registration)/config/fpfh.yaml"/>
         <rosparam command="load" file="$(find registration)/config/icp.yaml"/>
@@ -18,10 +18,7 @@
     <!-- If needed, broadcast static tf for robot root -->
     <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0 0 0 0 map base_link 1" />
 
-    <!-- send fake joint values -->
-    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-      <rosparam param="source_list">["/target_planner/fake_controller_joint_states"]</rosparam>
-    </node>
+    <node name="robot_joint_streamer" pkg="abb_irb1200_support" type="robot_joint_streamer.py"/>
 
     <!-- Start robot state publisher -->
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
