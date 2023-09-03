@@ -47,7 +47,8 @@ public:
     robot_registration_node():
         nh{},
         cloud_sub(nh.subscribe("cloud_in", 1, &robot_registration_node::cloud_cb, this)),
-        cloud_pub(nh.advertise<sensor_msgs::PointCloud2>("cloud_out", 1)),
+        aligned_cloud_pub(nh.advertise<sensor_msgs::PointCloud2>("cloud_out", 1)),
+        robot_cloud_pub(nh.advertise<sensor_msgs::PointCloud2>("robot_cloud", 1)),
         tf_buffer(),
         tf_listener(tf_buffer),
         tf_broadcaster()
@@ -59,29 +60,7 @@ public:
         publish_cloud(robot_cloud, "map");
 
         // get params
-        ros::param::get("~process/downsample_leaf_size", downsample_leaf_size);
-        ros::param::get("~process/normal_radius_search", normal_radius_search);
-        ros::param::get("~process/feature_radius_search", feature_radius_search);
-
-        ros::param::get("~use_fpfh", use_fpfh);
-        ros::param::get("~fpfh/max_fpfh_iterations", max_fpfh_iterations);
-        ros::param::get("~fpfh/fpfh_samples", fpfh_samples);
-        ros::param::get("~fpfh/correspondence_randomness", correspondence_randomness);
-        ros::param::get("~fpfh/similarity_threshold", similarity_threshold);
-        ros::param::get("~fpfh/max_correspondence_distance", max_correspondence_distance_fpfh);
-        ros::param::get("~fpfh/inlier_fraction", inlier_fraction);
-
-        ros::param::get("~use_super4pcs", use_super4pcs);
-        ros::param::get("~super4pcs/overlap", overlap);
-        ros::param::get("~super4pcs/delta", delta);
-        ros::param::get("~super4pcs/super4pcs_samples", super4pcs_samples);
-
-        ros::param::get("~use_icp", use_icp);
-        ros::param::get("~icp/max_icp_iterations", max_icp_iterations);
-        ros::param::get("~icp/max_correspondence_distance_icp", max_correspondence_distance_icp);
-        ros::param::get("~icp/transformation_epsilon", transformation_epsilon);
-        ros::param::get("~icp/euclidean_fitness_epsilon", euclidean_fitness_epsilon);
-
+        get_parameters();
     };
     
     ~robot_registration_node()
@@ -93,7 +72,8 @@ private:
     // ROS
     ros::NodeHandle nh;
     ros::Subscriber cloud_sub;
-    ros::Publisher cloud_pub;
+    ros::Publisher aligned_cloud_pub;
+    ros::Publisher robot_cloud_pub;
     
     // tf
     tf2_ros::Buffer tf_buffer;
@@ -148,25 +128,30 @@ private:
         build_robot_cloud();
 
         // Point clouds
-        PointCloudT::Ptr robot_aligned(new PointCloudT);
+        // PointCloudT::Ptr robot_aligned(new PointCloudT);
         PointCloudT::Ptr scene(new PointCloudT);
         FeatureCloudT::Ptr robot_features(new FeatureCloudT);
         FeatureCloudT::Ptr scene_features(new FeatureCloudT);
 
         
         // load cloud
-        ROS_INFO("Loading Cloud\n");
+        ROS_INFO("Loading Cloud");
         pcl::fromROSMsg(cloud_in, *scene);
 
         // Downsample
-        ROS_INFO("Downsampling Clouds\n");
+        ROS_INFO("Downsampling Clouds");
         downsample(scene, downsample_leaf_size);
         downsample(robot_cloud, downsample_leaf_size);
 
         // Estimate normals
-        ROS_INFO("Estimating Normals\n");
+        ROS_INFO("Estimating Normals");
         est_normals(scene, normal_radius_search);
         est_normals(robot_cloud, normal_radius_search);
+
+        // Estimate features
+        ROS_INFO("Estimating Features");
+        est_features(robot_cloud, robot_features, feature_radius_search);
+        est_features(scene, scene_features, feature_radius_search);
 
         // Perform alignment
         if (use_super4pcs)
@@ -176,11 +161,6 @@ private:
 
         if (use_fpfh)
         {
-            // Estimate features
-            ROS_INFO("Estimating Features\n");
-            est_features(robot_cloud, robot_features, feature_radius_search);
-            est_features(scene, scene_features, feature_radius_search);
-            
             fpfh_register(scene, scene_features, robot_features);
         }
 
@@ -194,12 +174,14 @@ private:
 
         // Publish ros msg cloud
         publish_cloud(scene, "map");
+
+        ROS_INFO("Finished\n");
     }
 
     void super4pcs_register(PointCloudT::Ptr &source_cloud)
     {
         // Perform super4pcs alignment
-        ROS_INFO("Aligning Super4pcs\n");
+        ROS_INFO("Aligning Super4pcs");
 
         pcl::Super4PCS<PointNT, PointNT> super4pcs; 
         super4pcs.setInputSource(source_cloud);
@@ -222,8 +204,7 @@ private:
          * setMaxCorrespondenceDistance: Inlier threshold (2.5 * leaf size)
          * setInlierFraction: Required inlier fraction for accepting a pose hypothesis, increase  (0.25)
          */
-        ROS_INFO("Aligning FPFH\n");
-
+        ROS_INFO("Aligning FPFH");
         pcl::SampleConsensusPrerejective<PointNT, PointNT, FeatureT> fpfh;
         fpfh.setInputSource(source_cloud);
         fpfh.setSourceFeatures(source_features);
@@ -235,14 +216,14 @@ private:
         fpfh.setSimilarityThreshold(similarity_threshold);
         fpfh.setMaxCorrespondenceDistance(max_correspondence_distance_fpfh);
         fpfh.setInlierFraction(inlier_fraction);
-        fpfh.align(*source_cloud);
+        fpfh.align(*source_cloud);//, transformation_estimate);
         transformation_estimate = fpfh.getFinalTransformation();
     }
 
     void icp_refine(PointCloudT::Ptr &source_cloud)
     {
         // perform ICP refinement
-        ROS_INFO("Aligning ICP\n");
+        ROS_INFO("Aligning ICP");
 
         pcl::IterativeClosestPoint<PointNT, PointNT> icp;
         icp.setInputSource(source_cloud);
@@ -276,7 +257,7 @@ private:
 
     void build_robot_cloud()
     {
-        ROS_INFO("Building Robot Cloud\n");
+        ROS_INFO("Building Robot Cloud");
 
         robot_cloud = PointCloudT::Ptr(new PointCloudT);
         transformed_link_cloud = PointCloudT::Ptr(new PointCloudT);
@@ -293,29 +274,34 @@ private:
 
             switch (link_index)
             {
-                // case 1:
-                //     pcl::transformPointCloud(*link_1_cloud, *transformed_link_cloud, t_link, q_link);
-                //     break;
+                case 1:
+                    pcl::transformPointCloud(*link_1_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
                 case 2:
                     pcl::transformPointCloud(*link_2_cloud, *transformed_link_cloud, t_link, q_link);
                     break;
-                // case 3:
-                //     pcl::transformPointCloud(*link_3_cloud, *transformed_link_cloud, t_link, q_link);
-                //     break;
-                // case 4:
-                //     pcl::transformPointCloud(*link_4_cloud, *transformed_link_cloud, t_link, q_link);
-                //     break;
-                // case 5:
-                //     pcl::transformPointCloud(*link_5_cloud, *transformed_link_cloud, t_link, q_link);
-                //     break;
-                // case 6:
-                //     pcl::transformPointCloud(*link_6_cloud, *transformed_link_cloud, t_link, q_link);
-                //     break;
+                case 3:
+                    pcl::transformPointCloud(*link_3_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 4:
+                    pcl::transformPointCloud(*link_4_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 5:
+                    pcl::transformPointCloud(*link_5_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
+                case 6:
+                    pcl::transformPointCloud(*link_6_cloud, *transformed_link_cloud, t_link, q_link);
+                    break;
             }
 
             *robot_cloud += *transformed_link_cloud;
         }
-        // *robot_cloud += *base_link_cloud;
+        *robot_cloud += *base_link_cloud;
+
+        sensor_msgs::PointCloud2 ros_cloud;
+        pcl::toROSMsg(*robot_cloud, ros_cloud);
+        ros_cloud.header.frame_id = "base_link";
+        robot_cloud_pub.publish(ros_cloud);
     }
 
     void downsample(PointCloudT::Ptr &cloud, float leaf_size)
@@ -348,8 +334,8 @@ private:
         sensor_msgs::PointCloud2 ros_cloud;
         pcl::toROSMsg(*cloud, ros_cloud);
         ros_cloud.header.frame_id = frame_id;
-        // Publish clouds
-        cloud_pub.publish(ros_cloud);
+        // Publish cloud
+        aligned_cloud_pub.publish(ros_cloud);
     }
 
     void broadcast_tf(std::string parent_frame, std::string child_frame)
@@ -367,6 +353,31 @@ private:
         tf_broadcaster.sendTransform(object_alignment_tf);
     }
 
+    void get_parameters()
+    {
+        ros::param::get("/registration_node/process/downsample_leaf_size", downsample_leaf_size);
+        ros::param::get("/registration_node/process/normal_SearchRadius", normal_radius_search);
+        ros::param::get("/registration_node/process/features_SearchRadius", feature_radius_search);
+
+        ros::param::get("/registration_node/use_fpfh", use_fpfh);
+        ros::param::get("/registration_node/fpfh/MaximumIterations", max_fpfh_iterations);
+        ros::param::get("/registration_node/fpfh/NumberOfSamples", fpfh_samples);
+        ros::param::get("/registration_node/fpfh/CorrespondenceRandomness", correspondence_randomness);
+        ros::param::get("/registration_node/fpfh/SimilarityThreshold", similarity_threshold);
+        ros::param::get("/registration_node/fpfh/MaxCorrespondenceDistance", max_correspondence_distance_fpfh);
+        ros::param::get("/registration_node/fpfh/InlierFraction", inlier_fraction);
+
+        ros::param::get("/registration_node/use_super4pcs", use_super4pcs);
+        ros::param::get("/registration_node/super4pcs/overlap", overlap);
+        ros::param::get("/registration_node/super4pcs/delta", delta);
+        ros::param::get("/registration_node/super4pcs/super4pcs_samples", super4pcs_samples);
+
+        ros::param::get("/registration_node/use_icp", use_icp);
+        ros::param::get("/registration_node/icp/MaximumIterations", max_icp_iterations);
+        ros::param::get("/registration_node/icp/MaxCorrespondenceDistance", max_correspondence_distance_icp);
+        ros::param::get("/registration_node/icp/TransformationEpsilon", transformation_epsilon);
+        ros::param::get("/registration_node/icp/EuclideanFitnessEpsilon", euclidean_fitness_epsilon);
+    }
 };
 
 
