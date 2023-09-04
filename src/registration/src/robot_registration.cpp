@@ -238,6 +238,9 @@ private:
 
     void load_robot()
     {
+        // get dir
+        std::string dir;
+        ros::param::get("/registration_node/pcd_dir", dir);
         // load clouds
         base_link_cloud = PointCloudT::Ptr(new PointCloudT);
         link_1_cloud = PointCloudT::Ptr(new PointCloudT);
@@ -246,13 +249,13 @@ private:
         link_4_cloud = PointCloudT::Ptr(new PointCloudT);
         link_5_cloud = PointCloudT::Ptr(new PointCloudT);
         link_6_cloud = PointCloudT::Ptr(new PointCloudT);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/base_link.pcd", *base_link_cloud);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_1.pcd", *link_1_cloud);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_2.pcd", *link_2_cloud);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_3.pcd", *link_3_cloud);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_4.pcd", *link_4_cloud);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_5.pcd", *link_5_cloud);
-        pcl::io::loadPCDFile<PointNT>("/home/lachl/robot-referencing/src/registration/pcd_files/link_6.pcd", *link_6_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"base_link.pcd", *base_link_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"link_1.pcd", *link_1_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"link_2.pcd", *link_2_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"link_3.pcd", *link_3_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"link_4.pcd", *link_4_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"link_5.pcd", *link_5_cloud);
+        pcl::io::loadPCDFile<PointNT>(dir+"link_6.pcd", *link_6_cloud);
     }
 
     void build_robot_cloud()
