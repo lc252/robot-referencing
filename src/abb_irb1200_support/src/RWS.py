@@ -1,8 +1,8 @@
 # A Robot Web Services (RWS) class for ABB robots from https://github.com/andreasstrom/RWS-wrapper
 
 
-from requests.auth import HTTPBasicAuth
-from requests import Session
+from requests.auth import HTTPDigestAuth
+from requests import Session, RequestException
 from ast import literal_eval
 import json, time, pathlib
 
@@ -12,17 +12,36 @@ class RWS:
     "For the RW 7.0 release, RWS has introduced several breaking changes to include the following requirements" -> Updates
     """
 
-    def __init__(self, base_url, username='admin', password='robotics', headers = {'Content-Type':'application/x-www-form-urlencoded;v=2.0'}, headers2 = {'accept': 'application/hal+json;v=2.0'}, verify = False, task = 'T_ROB1', module = 'arrs_mod'):
+    def __init__(self, base_url, username='Default User', password='robotics', headers = {'Content-Type':'application/x-www-form-urlencoded;v=2.0'}, headers2 = {'accept': 'application/hal+json;v=2.0'}, verify = False, task = 'T_ROB1', module = 'arrs_mod'):
         self.base_url = base_url
         self.username = username
         self.password = password
         self.session = Session() # create persistent HTTP communication
-        self.session.auth = HTTPBasicAuth(self.username, self.password)
+        self.session.auth = HTTPDigestAuth(self.username, self.password)
         self.headers = headers
         self.headers_json = headers2
         self.verify = verify
         self.task = task
         self.module = module
+
+    def is_connected(self):
+        try:
+            self.session.get(self.base_url + '/rw/rapid/execution?json=1', timeout=0.2)
+        except RequestException as e:
+            print(e)
+            return False
+        print("Connected to Robot")
+        return True
+    
+    def get_joints(self):
+        if self.is_connected():
+            resp = self.session.get(self.base_url + '/rw/motionsystem/mechunits/ROB_1/jointtarget?json=1')
+            _dict = json.loads(resp.text)
+            data = _dict["_embedded"]["_state"][0]
+            joints = [float(data[f"rax_{i}"]) for i in range(1,7)]
+            return joints
+        else:
+            return [0, 0, 0, 0, 0, 0]
 
     def get_modules(self, ignore=True, api=False):
         """"
