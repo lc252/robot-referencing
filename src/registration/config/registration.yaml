@@ -5,9 +5,9 @@
   
   "process" :
   {
-    "downsample_leaf_size": 0.025,
-    "normal_SearchRadius": 0.05,
-    "features_SearchRadius": 0.05
+    "downsample_leaf_size": 0.0125,
+    "normal_SearchRadius": 0.025,
+    "features_SearchRadius": 0.025
   },
 
   "fpfh" :
@@ -15,15 +15,15 @@
     "MaximumIterations": 100000,
     "NumberOfSamples": 3,
     "CorrespondenceRandomness": 5,
-    "SimilarityThreshold": 0.85,
+    "SimilarityThreshold": 0.8,
     "MaxCorrespondenceDistance": 0.0125,
     "InlierFraction": 0.25  
   },
 
   "super4pcs" :
   {
-    "overlap": 0.1,
-    "delta": 0.0005,
+    "overlap": 0.3,
+    "delta": 0.05,
     "samples": 50000
   },
 

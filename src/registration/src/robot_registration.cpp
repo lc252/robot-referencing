@@ -136,7 +136,6 @@ private:
         FeatureCloudT::Ptr robot_features(new FeatureCloudT);
         FeatureCloudT::Ptr scene_features(new FeatureCloudT);
 
-        
         // load cloud
         ROS_INFO("Loading Cloud");
         pcl::fromROSMsg(cloud_in, *scene);
@@ -147,7 +146,7 @@ private:
 
         // Extract largest cluster
         ROS_INFO("Extracting Largest Cluster");
-        cluster_extraction(scene, downsample_leaf_size*2);
+        cluster_extraction(scene, downsample_leaf_size*1.2);
 
         // Estimate normals
         ROS_INFO("Estimating Normals");
@@ -160,20 +159,11 @@ private:
         est_features(scene, scene_features, feature_radius_search);
 
         // Perform alignment
-        if (use_super4pcs)
-        {
-            super4pcs_register(scene);
-        }
+        if (use_super4pcs) super4pcs_register(scene);
 
-        if (use_fpfh)
-        {
-            fpfh_register(scene, scene_features, robot_features);
-        }
+        if (use_fpfh) fpfh_register(scene, scene_features, robot_features);
 
-        if (use_icp)
-        {
-            icp_refine(scene);
-        }
+        if (use_icp) icp_refine(scene);
 
         // Broadcast tf
         broadcast_tf("map", "aligned");
@@ -348,7 +338,7 @@ private:
         std::vector<pcl::PointIndices> cluster_indices;
         pcl::EuclideanClusterExtraction<PointNT> ec;
         ec.setClusterTolerance(sr);
-        ec.setMinClusterSize(10);
+        ec.setMinClusterSize(100);
         ec.setMaxClusterSize(50000);
         ec.setSearchMethod(tree);
         ec.setInputCloud(cloud);
@@ -366,6 +356,12 @@ private:
                 largest_cluster_size = cluster_size;
                 idx = i;
             }
+        }
+        
+        if (largest_cluster_size == 0)
+        {
+            ROS_ERROR("No clusters found");
+            return;
         }
 
         // Extract largest cluster
