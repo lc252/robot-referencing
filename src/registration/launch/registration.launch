@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="cloud_topic" default="cloud_in"/>
+    <arg name="cloud_topic" default="/camera/ahat"/>
 
     <node pkg="registration" type="robot_registration" name="registration_node" output="screen">
         <rosparam command="load" file="$(find registration)/config/registration.yaml"/>
