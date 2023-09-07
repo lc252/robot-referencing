@@ -1,9 +1,9 @@
 <launch>
 
     <!-- Args -->
-    <arg name="cuda"                    default="false"/>
-    <arg name="render"                  default="false"/>
-    <arg name="model"                   default="robotseg_nano_100.pt"/>
+    <arg name="cuda"                    default="true"/>
+    <arg name="render"                  default="true"/>
+    <arg name="model"                   default="robotseg_small_200.pt"/>
     <arg name="realsense"               default="false"/>
 
     <!-- RS Camera -->
