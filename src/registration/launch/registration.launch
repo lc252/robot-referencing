@@ -11,17 +11,6 @@
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find registration)/rviz/registration.rviz" required="true"/>
 
     <!-- Robot Render -->
-    <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
-    <include file="$(find abb_irb1200_7_70_moveit_config)/launch/planning_context.launch">
-      <arg name="load_robot_description" value="true"/>
-    </include>
-
-    <!-- If needed, broadcast static tf for robot root -->
-    <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0 0 0 0 map base_link 1" />
-
-    <node name="robot_joint_streamer" pkg="abb_irb1200_support" type="robot_joint_streamer.py"/>
-
-    <!-- Start robot state publisher -->
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch"/>
 
 </launch>
