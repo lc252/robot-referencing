@@ -1,12 +1,13 @@
 <launch>
 
     <!-- Args -->
-    <arg name="cuda"                    default="true"/>
+    <arg name="cuda"                    default="false"/>
     <arg name="render"                  default="false"/>
-    <arg name="model"                   default="/home/fif/lc252/robot-referencing/src/yolo/models/yolov8n-seg.pt"/>
+    <arg name="model"                   default="robotseg_nano_100.pt"/>
+    <arg name="realsense"               default="false"/>
 
     <!-- RS Camera -->
-    <include file="$(find yolo)/launch/rs_rgbd.launch">
+    <include if="$(arg realsense)" file="$(find yolo)/launch/rs_rgbd.launch">
         <arg name="output"              value="log"/>
         <arg name="depth_width"         value="640"/>
         <arg name="depth_height"        value="480"/>
@@ -20,7 +21,7 @@
     <node pkg="yolo" type="detect.py" name="yolo" output="screen">
         <param name="cuda" value="$(arg cuda)"/>
         <param name="render" value="$(arg render)"/>
-        <param name="model" value="$(arg model)"/>
+        <param name="model" value="$(find yolo)/models/$(arg model)"/>
     </node>
 
     <!-- Rviz -->
