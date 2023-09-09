@@ -24,7 +24,7 @@
     </include>
 
     <!-- Known arucos -->
-    <include file="$(find multi_aruco)/launch/aruco_tfs.launch"/>
+    <node pkg="multi_aruco" name="aruco_tf_broadcaster" type="aruco_tfs.py"/>
 
     <!-- <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/> -->
 
