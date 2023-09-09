@@ -9,7 +9,7 @@
     </include>
 
     <!-- If needed, broadcast static tf for robot root -->
-    <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0 0 0 0 map base_link 1" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0 0 0 0 map base_link 1" /> -->
 
     <node if="$(arg stream_joints)" name="robot_joint_streamer" pkg="abb_irb1200_support" type="robot_joint_streamer.py"/>
 
