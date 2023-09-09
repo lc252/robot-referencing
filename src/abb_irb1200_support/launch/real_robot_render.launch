@@ -1,6 +1,7 @@
 <launch>
 
     <arg name="stream_joints" default="true"/>
+    <arg name="joint_topic" default="/joint_states"/>
 
     <!-- Robot Render -->
     <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
@@ -14,6 +15,8 @@
     <node if="$(arg stream_joints)" name="robot_joint_streamer" pkg="abb_irb1200_support" type="robot_joint_streamer.py"/>
 
     <!-- Start robot state publisher -->
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+        <param name="/source_list" value="$(arg joint_topic)"/>
+    </node>
     
 </launch>
