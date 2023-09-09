@@ -11,12 +11,14 @@ import tf2_ros as tf2
 
 class ftf_average():
     def __init__(self):
-        self.ftf_sub = rospy.Subscriber("/fiducial_transforms", FiducialTransformArray, self.conversion_cb)
+        self.ftf_sub = rospy.Subscriber("/fiducial_transforms", FiducialTransformArray, self.transform_to_base_frame)
         self.pose_pub = rospy.Publisher(f"/pose/filtered", PoseWithCovarianceStamped, queue_size=1)
         self.buffer = tf2.Buffer()
         self.listener = tf2.TransformListener(self.buffer)
+        # wait for buffer
+        rospy.sleep(1)
 
-    def average_transform(self, ftf_arr : FiducialTransformArray):
+    def average_transforms(self, ftf_arr : FiducialTransformArray):
         pwcs = PoseWithCovarianceStamped()
         pwcs.header.stamp = ftf_arr.header.stamp
         pwcs.header.frame_id = "base_link"
@@ -32,7 +34,7 @@ class ftf_average():
         for ftf in ftf_arr.transforms:
             # get the known base -> aruco transform
             ar_base_TF : TransformStamped
-            ar_base_TF = self.buffer.lookup_transform(f"aruco_{ftf.fiducial_id}_known", "base_link", rospy.Time())
+            ar_base_TF = self.buffer.lookup_transform(f"aruco{ftf.fiducial_id}", "base_link", rospy.Time())
             # extract the translation and rotation
             ar_base_t = ar_base_TF.transform.translation
             ar_base_q = ar_base_TF.transform.rotation
@@ -72,9 +74,10 @@ class ftf_average():
             # extract the rotation matrix
             base_cam_r = R.from_matrix(base_cam_M[0:3,0:3])
             # extract the euler angles
-            base_cam_eul = base_cam_r.as_euler("xyz")  
 
-            rospy.logerr(f"\n{np.around(base_cam_M[0:3,0:3])}\n{base_cam_r.as_quat()}\n{np.around(base_cam_eul, 2)}")
+            # this and the line below showed that this method did not work
+            base_cam_eul = base_cam_r.as_euler("xyz")  
+            # rospy.logerr(f"\n{np.around(base_cam_M[0:3,0:3])}\n{base_cam_r.as_quat()}\n{np.around(base_cam_eul, 2)}")
             
             # append rotation and translation to lists for averaging
             roll.append(base_cam_eul[0])
@@ -102,15 +105,17 @@ class ftf_average():
         self.pose_pub.publish(pwcs)
 
     def transform_to_base_frame(self, ftf_arr : FiducialTransformArray):
+        # gets each fiducial transform and transforms it to the base frame
+        # uses the object error as the covariance for each meseaurement
         pwcs = PoseWithCovarianceStamped()
-        pwcs.header.stamp = ftf_arr.header.stamp
+        pwcs.header.stamp = rospy.Time.now() # ftf_arr.header.stamp
         pwcs.header.frame_id = "base_link"
 
         ftf : FiducialTransform
         for ftf in ftf_arr.transforms:
             # get the known base -> aruco transform
             ar_base_TF : TransformStamped
-            ar_base_TF = self.buffer.lookup_transform(f"aruco_{ftf.fiducial_id}_known", "base_link", rospy.Time())
+            ar_base_TF = self.buffer.lookup_transform(f"aruco{ftf.fiducial_id}", "base_link", rospy.Time())
             # extract the translation and rotation
             ar_base_t = ar_base_TF.transform.translation
             ar_base_q = ar_base_TF.transform.rotation
