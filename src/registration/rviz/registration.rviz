@@ -144,9 +144,37 @@ Visualization Manager:
         All Enabled: false
         aligned:
           Value: true
+        aruco0:
+          Value: true
+        aruco1:
+          Value: true
+        aruco10:
+          Value: true
+        aruco11:
+          Value: true
+        aruco2:
+          Value: true
+        aruco3:
+          Value: true
+        aruco4:
+          Value: true
+        aruco5:
+          Value: true
+        aruco6:
+          Value: true
+        aruco7:
+          Value: true
+        aruco8:
+          Value: true
+        aruco9:
+          Value: true
         base:
           Value: false
         base_link:
+          Value: true
+        camera_color_optical_frame:
+          Value: true
+        camera_link:
           Value: true
         flange:
           Value: false
@@ -162,10 +190,10 @@ Visualization Manager:
           Value: true
         link_6:
           Value: true
-        map:
-          Value: false
         tool0:
           Value: false
+        world:
+          Value: true
       Marker Alpha: 0.5
       Marker Scale: 0.5
       Name: TF
@@ -173,16 +201,43 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
+        camera_link:
+          camera_color_optical_frame:
+            {}
+        world:
           aligned:
             {}
           base_link:
+            aruco0:
+              {}
+            aruco1:
+              {}
+            aruco2:
+              {}
             base:
               {}
             link_1:
+              aruco3:
+                {}
+              aruco4:
+                {}
               link_2:
+                aruco5:
+                  {}
+                aruco6:
+                  {}
+                aruco7:
+                  {}
                 link_3:
+                  aruco10:
+                    {}
+                  aruco8:
+                    {}
+                  aruco9:
+                    {}
                   link_4:
+                    aruco11:
+                      {}
                     link_5:
                       link_6:
                         flange:
@@ -257,7 +312,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -317,5 +372,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: -32
-  Y: -32
+  X: 1905
+  Y: -14
