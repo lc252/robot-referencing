@@ -33,7 +33,7 @@ class aruco_pos_sim():
             tf.header.stamp = rospy.Time.now()
             self.broadcaster.sendTransform(tf)
 
-        self.broadcaster.sendTransform(TransformStamped(msg.Header(0, rospy.Time.now(), "world"), "base_link", Transform(Vector3(0, 1, 0), Quaternion(0, 0, 0, 1))))
+        self.broadcaster.sendTransform(TransformStamped(msg.Header(0, rospy.Time.now(), "world"), "base_link", Transform(Vector3(0, 0, 0), Quaternion(0, 0, 0, 1))))
         self.broadcaster.sendTransform(TransformStamped(msg.Header(0, rospy.Time.now(), "camera_link"), "camera_color_optical_frame", Transform(Vector3(0, 0.015, 0), Quaternion(0.5, 0.5, 0.5, -0.5))))
 
 
