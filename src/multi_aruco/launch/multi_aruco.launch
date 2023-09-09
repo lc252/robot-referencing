@@ -1,6 +1,10 @@
 <launch>
 
     <arg name="use_camera" default="false"/>
+
+    <!-- For Processing Rosbag -->
+    <param name="use_sim_time" value="true"/>
+    <node pkg="multi_aruco" type="clock_rerouter.py" name="clock_pub"/> 
     
     <!-- RS Camera -->
     <include if="$(arg use_camera)" file="$(find multi_aruco)/launch/rs_rgbd.launch">
@@ -23,15 +27,16 @@
         <arg name="do_pose_estimation" value="true"/>
     </include>
 
-    <!-- Known arucos -->
+    <!-- Known Arucos -->
     <node pkg="multi_aruco" name="aruco_tf_broadcaster" type="aruco_tfs.py"/>
 
-    <!-- <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/> -->
+    <!-- Aruco Transformer -->
+    <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/>
 
     <!-- EKF -->
-    <!-- <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
+    <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
         <rosparam command="load" file="$(find multi_aruco)/params/ekf_params.yaml"/>
-    </node> -->
+    </node>
 
     <!-- RViz -->
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/multi_aruco.rviz" required="true"/>
