@@ -1,7 +1,9 @@
 <launch>
+
+    <arg name="use_camera" default="false"/>
     
     <!-- RS Camera -->
-    <include file="$(find multi_aruco)/launch/rs_rgbd.launch">
+    <include if="$(arg use_camera)" file="$(find multi_aruco)/launch/rs_rgbd.launch">
         <arg name="output"              value="log"/>
         <arg name="depth_width"         value="640"/>
         <arg name="depth_height"        value="480"/>
@@ -13,14 +15,18 @@
 
     <!-- Aruco Detection -->
     <include file="$(find aruco_detect)/launch/aruco_detect.launch">
-        <arg name="camera" default="/camera/color"/>
-        <arg name="image" default="image_raw"/>
-        <arg name="transport" default="compressed"/>
-        <arg name="fiducial_len" default="0.08"/>
-        <arg name="dictionary" default="16"/>
-        <arg name="do_pose_estimation" default="true"/>
+        <arg name="camera" value="/camera/color"/>
+        <arg name="image" value="image_raw"/>
+        <arg name="transport" value="compressed"/>
+        <arg name="fiducial_len" value="0.076"/>
+        <arg name="dictionary" value="0"/>
+        <arg name="do_pose_estimation" value="true"/>
     </include>
-    <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/>
+
+    <!-- Known arucos -->
+    <include file="$(find multi_aruco)/launch/aruco_tfs.launch"/>
+
+    <!-- <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/> -->
 
     <!-- EKF -->
     <!-- <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
@@ -28,6 +34,13 @@
     </node> -->
 
     <!-- RViz -->
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/settings.rviz" required="true"/>
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/multi_aruco.rviz" required="true"/>
+
+    <!-- Robot Render -->
+    <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch">
+        <arg name="stream_joints" value="false"/>
+    </include>
+
+    <node pkg="tf" type="static_transform_publisher" name="base_camera_pub" args="0 0 0 0 0 0 1 base_link camera_color_optical_frame 1" />
 
 </launch>
