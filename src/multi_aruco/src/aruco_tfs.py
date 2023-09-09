@@ -10,11 +10,11 @@ import tf2_ros as tf2
 class aruco_pos_sim():
     def __init__(self):
         self.broadcaster = tf2.StaticTransformBroadcaster()
-        self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_tf)
+        self.timer = rospy.Timer(rospy.Duration(0.1), self.publish_tfs)
 
         self.transforms = {
-            "aruco0"  : TransformStamped(msg.Header(0, rospy.Time.now(), "base_link"),  "aruco0", Transform(Vector3(0.113, 0, 0.120), Quaternion(0, 0, 0, 1))),
-            "aruco1"  : TransformStamped(msg.Header(0, rospy.Time.now(), "base_link"),  "aruco1", Transform(Vector3(0, 0.113, 0.120), Quaternion(0, 0, 0, 1))),
+            "aruco0"  : TransformStamped(msg.Header(0, rospy.Time.now(), "base_link"),  "aruco0", Transform(Vector3(0.113, 0, 0.120), Quaternion(0.5, 0.5, 0.5, 0.5))),
+            "aruco1"  : TransformStamped(msg.Header(0, rospy.Time.now(), "base_link"),  "aruco1", Transform(Vector3(0, 0.113, 0.120), Quaternion(0, 0.7071, 0.7071, 0))),
             "aruco2"  : TransformStamped(msg.Header(0, rospy.Time.now(), "base_link"),  "aruco2", Transform(Vector3(0, -0.113, 0.120), Quaternion(0, 0, 0, 1))),
             "aruco3"  : TransformStamped(msg.Header(0, rospy.Time.now(), "link_1"),     "aruco3", Transform(Vector3(0, 0.130, 0), Quaternion(0, 0, 0, 1))),
             "aruco4"  : TransformStamped(msg.Header(0, rospy.Time.now(), "link_1"),     "aruco4", Transform(Vector3(0, -0.130, 0), Quaternion(0, 0, 0, 1))),
@@ -28,11 +28,14 @@ class aruco_pos_sim():
             "aruco12" : TransformStamped(msg.Header(0, rospy.Time.now(), "link_4"),    "aruco12", Transform(Vector3(0.267, 0.057, 0), Quaternion(0, 0, 0, 1))),
         }
     
-    def publish_tfs(self):
+    def publish_tfs(self, timer_event):
         for aruco in self.transforms:
             tf = self.transforms[aruco]
             tf.header.stamp = rospy.Time.now()
             self.broadcaster.sendTransform(tf)
+
+        self.broadcaster.sendTransform(TransformStamped(msg.Header(0, rospy.Time.now(), "base_link"), "camera_color_optical_frame", Transform(Vector3(0, 0, 0), Quaternion(0, 0, 0, 1))))
+
 
 
 if __name__ == "__main__":
