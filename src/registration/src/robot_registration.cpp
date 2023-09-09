@@ -60,7 +60,7 @@ public:
         // allow the tf buffer to fill
         ros::Duration(1.0).sleep();
         build_robot_cloud();
-        publish_cloud(robot_cloud, "map");
+        publish_cloud(robot_cloud, "world");
 
         // get params
         get_parameters();
@@ -166,10 +166,10 @@ private:
         if (use_icp) icp_refine(scene);
 
         // Broadcast tf
-        broadcast_tf("map", "aligned");
+        broadcast_tf("world", "aligned");
 
         // Publish ros msg cloud
-        publish_cloud(scene, "map");
+        publish_cloud(scene, "world");
 
         ROS_INFO("Finished\n");
     }
