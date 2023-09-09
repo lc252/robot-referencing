@@ -1,10 +1,11 @@
 <launch>
 
     <arg name="use_camera" default="false"/>
+    <arg name="use_bag" default="false"/>
 
     <!-- For Processing Rosbag -->
-    <param name="use_sim_time" value="true"/>
-    <node pkg="multi_aruco" type="clock_rerouter.py" name="clock_pub"/> 
+    <param if="use_bag" name="use_sim_time" value="true"/>
+    <node if="use_bag" pkg="robot_referencing" type="clock_rerouter.py" name="clock_pub"/> 
     
     <!-- RS Camera -->
     <include if="$(arg use_camera)" file="$(find multi_aruco)/launch/rs_rgbd.launch">
