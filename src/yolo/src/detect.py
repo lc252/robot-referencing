@@ -5,7 +5,7 @@ from ultralytics import YOLO
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image, PointCloud2
+from sensor_msgs.msg import Image, PointCloud2, CompressedImage
 import message_filters
 from yolo.msg import Mask, MaskArray
 
@@ -20,16 +20,18 @@ class Detector:
         self.model = YOLO(self.params["model"])
         if self.params["cuda"]:
             self.model.to("cuda")
+            rospy.loginfo("Loaded model to CUDA")
         
         # synchronised image / cloud subscribers
         # image subscriber
-        self.img_sub = message_filters.Subscriber("camera/color/image_raw", Image)
+        # self.img_sub = message_filters.Subscriber("camera/color/image_raw/compressed", CompressedImage)
+        self.img_sub = rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self.img_cb)
         self.img = np.zeros(shape=(480,640,3))
-        # pointcloud subscriber
-        self.pc_sub = message_filters.Subscriber("camera/depth_registered/points", PointCloud2)
-        self.cloud = PointCloud2()
-        self.sync_sub = message_filters.TimeSynchronizer([self.img_sub, self.pc_sub], queue_size=1)
-        self.sync_sub.registerCallback(self.sync_cb)
+        # # pointcloud subscriber
+        # self.pc_sub = message_filters.Subscriber("camera/depth_registered/points", PointCloud2)
+        # self.cloud = PointCloud2()
+        # self.sync_sub = message_filters.TimeSynchronizer([self.img_sub, self.pc_sub], queue_size=1)
+        # self.sync_sub.registerCallback(self.sync_cb)
 
         # Detection Mask Publisher
         self.mask_pub = rospy.Publisher("yolo/detections", MaskArray, queue_size=1)
@@ -39,8 +41,15 @@ class Detector:
 
     def sync_cb(self, img_msg, pc2_msg):
         # self.img = np.frombuffer(img_msg.data, dtype=np.uint8).reshape(img_msg.height, img_msg.width, -1)
-        self.img = CvBridge().imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
+        # self.img = CvBridge().imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
+        self.img = CvBridge().compressed_imgmsg_to_cv2(cmprs_img_msg=img_msg, desired_encoding="bgr8")
         self.cloud = pc2_msg
+
+    def img_cb(self, img_msg):
+        # self.img = np.frombuffer(img_msg.data, dtype=np.uint8).reshape(img_msg.height, img_msg.width, -1)
+        # self.img = CvBridge().imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
+        self.img = CvBridge().compressed_imgmsg_to_cv2(cmprs_img_msg=img_msg, desired_encoding="bgr8")
+        # self.cloud = pc2_msg
 
     def inference_cb(self, timer):
         # do detection
@@ -66,5 +75,5 @@ class Detector:
 
 if __name__ == '__main__':
     rospy.init_node('yolo_inference_node', anonymous=True, log_level=rospy.DEBUG)
-    display = Detector()
+    Detector()
     rospy.spin() 

@@ -11,10 +11,14 @@ import tf2_ros as tf2
 
 class ftf_average():
     def __init__(self):
-        self.ftf_sub = rospy.Subscriber("/fiducial_transforms", FiducialTransformArray, self.conversion_cb)
+        self.ftf_sub = rospy.Subscriber("/fiducial_transforms", FiducialTransformArray, self.transform_to_base_frame)
         self.pose_pub = rospy.Publisher(f"/pose/filtered", PoseWithCovarianceStamped, queue_size=1)
+        self.buffer = tf2.Buffer()
+        self.listener = tf2.TransformListener(self.buffer)
+        # wait for buffer
+        rospy.sleep(1)
 
-    def conversion_cb(self, ftf_arr : FiducialTransformArray):
+    def average_transforms(self, ftf_arr : FiducialTransformArray):
         pwcs = PoseWithCovarianceStamped()
         pwcs.header.stamp = ftf_arr.header.stamp
         pwcs.header.frame_id = "base_link"
@@ -30,7 +34,7 @@ class ftf_average():
         for ftf in ftf_arr.transforms:
             # get the known base -> aruco transform
             ar_base_TF : TransformStamped
-            ar_base_TF = self.buffer.lookup_transform(f"aruco_{ftf.fiducial_id}_known", "base_link", rospy.Time())
+            ar_base_TF = self.buffer.lookup_transform(f"aruco{ftf.fiducial_id}", "base_link", rospy.Time())
             # extract the translation and rotation
             ar_base_t = ar_base_TF.transform.translation
             ar_base_q = ar_base_TF.transform.rotation
@@ -40,14 +44,28 @@ class ftf_average():
             ar_base_M[0:3,0:3] = ar_base_r.as_matrix()
             ar_base_M[0:3, 3] = np.array([ar_base_t.x, ar_base_t.y, ar_base_t.z])
 
-            # get the camera -> aruco transform
-            cam_ar_t = ftf.transform.translation
-            cam_ar_q = ftf.transform.rotation
-            cam_ar_r = R.from_quat([cam_ar_q.x, cam_ar_q.y, cam_ar_q.z, cam_ar_q.w])
+            # get the camera optical -> aruco transform
+            opt_ar_t = ftf.transform.translation
+            opt_ar_q = ftf.transform.rotation
+            opt_ar_r = R.from_quat([opt_ar_q.x, opt_ar_q.y, opt_ar_q.z, opt_ar_q.w])
             # build the transform matrix
-            cam_ar_M = np.identity(4)
-            cam_ar_M[0:3,0:3] = cam_ar_r.as_matrix()
-            cam_ar_M[0:3, 3] = np.array([cam_ar_t.x, cam_ar_t.y, cam_ar_t.z])
+            opt_ar_M = np.identity(4)
+            opt_ar_M[0:3,0:3] = opt_ar_r.as_matrix()
+            opt_ar_M[0:3, 3] = np.array([opt_ar_t.x, opt_ar_t.y, opt_ar_t.z])
+
+            # get cam -> opt
+            cam_opt_TF : TransformStamped
+            cam_opt_TF = self.buffer.lookup_transform("camera_link", "camera_color_optical_frame", rospy.Time())
+            # extract the translation and rotation
+            cam_opt_t = cam_opt_TF.transform.translation
+            cam_opt_q = cam_opt_TF.transform.rotation
+            cam_opt_r = R.from_quat([cam_opt_q.x, cam_opt_q.y, cam_opt_q.z, cam_opt_q.w])
+            # build the transform matrix
+            cam_opt_M = np.identity(4)
+            cam_opt_M[0:3,0:3] = cam_opt_r.as_matrix()
+            cam_opt_M[0:3, 3] = np.array([cam_opt_t.x, cam_opt_t.y, cam_opt_t.z])   
+            cam_ar_M = np.matmul(cam_opt_M, opt_ar_M)
+            
 
             # get the camera -> base transform
             cam_base_M = np.matmul(cam_ar_M, ar_base_M)
@@ -56,7 +74,10 @@ class ftf_average():
             # extract the rotation matrix
             base_cam_r = R.from_matrix(base_cam_M[0:3,0:3])
             # extract the euler angles
+
+            # this and the line below showed that this method did not work
             base_cam_eul = base_cam_r.as_euler("xyz")  
+            # rospy.logerr(f"\n{np.around(base_cam_M[0:3,0:3])}\n{base_cam_r.as_quat()}\n{np.around(base_cam_eul, 2)}")
             
             # append rotation and translation to lists for averaging
             roll.append(base_cam_eul[0])
@@ -78,10 +99,73 @@ class ftf_average():
         q = R.from_euler("xyz", [np.mean(roll), np.mean(pitch), np.mean(yaw)]).as_quat()
         pwcs.pose.pose.position = Vector3(np.mean(x), np.mean(y), np.mean(z))
         pwcs.pose.pose.orientation = Quaternion(*q)
-        # pwcs.pose.covariance = cov.flatten()
+        pwcs.pose.covariance = cov.flatten()
 
         # publish
         self.pose_pub.publish(pwcs)
+
+    def transform_to_base_frame(self, ftf_arr : FiducialTransformArray):
+        # gets each fiducial transform and transforms it to the base frame
+        # uses the object error as the covariance for each meseaurement
+        pwcs = PoseWithCovarianceStamped()
+        pwcs.header.stamp = rospy.Time.now() # ftf_arr.header.stamp
+        pwcs.header.frame_id = "base_link"
+
+        ftf : FiducialTransform
+        for ftf in ftf_arr.transforms:
+            # get the known base -> aruco transform
+            ar_base_TF : TransformStamped
+            ar_base_TF = self.buffer.lookup_transform(f"aruco{ftf.fiducial_id}", "base_link", rospy.Time())
+            # extract the translation and rotation
+            ar_base_t = ar_base_TF.transform.translation
+            ar_base_q = ar_base_TF.transform.rotation
+            ar_base_r = R.from_quat([ar_base_q.x, ar_base_q.y, ar_base_q.z, ar_base_q.w])
+            # build the transform matrix
+            ar_base_M = np.identity(4)
+            ar_base_M[0:3,0:3] = ar_base_r.as_matrix()
+            ar_base_M[0:3, 3] = np.array([ar_base_t.x, ar_base_t.y, ar_base_t.z])
+
+            # get the camera optical -> aruco transform
+            opt_ar_t = ftf.transform.translation
+            opt_ar_q = ftf.transform.rotation
+            opt_ar_r = R.from_quat([opt_ar_q.x, opt_ar_q.y, opt_ar_q.z, opt_ar_q.w])
+            # build the transform matrix
+            opt_ar_M = np.identity(4)
+            opt_ar_M[0:3,0:3] = opt_ar_r.as_matrix()
+            opt_ar_M[0:3, 3] = np.array([opt_ar_t.x, opt_ar_t.y, opt_ar_t.z])
+
+            # get cam -> opt
+            cam_opt_TF : TransformStamped
+            cam_opt_TF = self.buffer.lookup_transform("camera_link", "camera_color_optical_frame", rospy.Time())
+            # extract the translation and rotation
+            cam_opt_t = cam_opt_TF.transform.translation
+            cam_opt_q = cam_opt_TF.transform.rotation
+            cam_opt_r = R.from_quat([cam_opt_q.x, cam_opt_q.y, cam_opt_q.z, cam_opt_q.w])
+            # build the transform matrix
+            cam_opt_M = np.identity(4)
+            cam_opt_M[0:3,0:3] = cam_opt_r.as_matrix()
+            cam_opt_M[0:3, 3] = np.array([cam_opt_t.x, cam_opt_t.y, cam_opt_t.z])   
+            cam_ar_M = np.matmul(cam_opt_M, opt_ar_M)
+            
+
+            # get the camera -> base transform
+            cam_base_M = np.matmul(cam_ar_M, ar_base_M)
+            # invert the transform to get base -> camera
+            base_cam_M = np.linalg.inv(cam_base_M)
+            # extract the rotation matrix
+            base_cam_r = R.from_matrix(base_cam_M[0:3,0:3])    
+
+            # populate the diagonal of the covariance matrix with the object error (reprojection error in m)
+            cov = ftf.object_error * np.identity(6)
+
+            # populate the message fields
+            q = base_cam_r.as_quat()
+            pwcs.pose.pose.position = Vector3(*base_cam_M[0:3, 3])
+            pwcs.pose.pose.orientation = Quaternion(*q)
+            pwcs.pose.covariance = cov.flatten()
+
+            # publish
+            self.pose_pub.publish(pwcs)
 
 
 

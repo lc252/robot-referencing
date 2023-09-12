@@ -1,7 +1,13 @@
 <launch>
+
+    <arg name="use_camera" default="false"/>
+
+    <!-- For Processing Rosbag -->
+    <param unless="$(arg use_camera)" name="use_sim_time" value="true"/>
+    <node unless="$(arg use_camera)" pkg="robot_referencing" type="clock_rerouter.py" name="clock_pub"/> 
     
     <!-- RS Camera -->
-    <include file="$(find multi_aruco)/launch/rs_rgbd.launch">
+    <include if="$(arg use_camera)" file="$(find multi_aruco)/launch/rs_rgbd.launch">
         <arg name="output"              value="log"/>
         <arg name="depth_width"         value="640"/>
         <arg name="depth_height"        value="480"/>
@@ -13,21 +19,31 @@
 
     <!-- Aruco Detection -->
     <include file="$(find aruco_detect)/launch/aruco_detect.launch">
-        <arg name="camera" default="/camera/color"/>
-        <arg name="image" default="image_raw"/>
-        <arg name="transport" default="compressed"/>
-        <arg name="fiducial_len" default="0.08"/>
-        <arg name="dictionary" default="16"/>
-        <arg name="do_pose_estimation" default="true"/>
+        <arg name="camera" value="/camera/color"/>
+        <arg name="image" value="image_raw"/>
+        <arg name="transport" value="compressed"/>
+        <arg name="fiducial_len" value="0.076"/>
+        <arg name="dictionary" value="0"/>
+        <arg name="do_pose_estimation" value="true"/>
     </include>
+
+    <!-- Known Arucos -->
+    <node pkg="multi_aruco" name="aruco_tf_broadcaster" type="aruco_tfs.py"/>
+
+    <!-- Aruco Transformer -->
     <node pkg="multi_aruco" type="ftf_average.py" name="ftf_averager_node"/>
 
     <!-- EKF -->
-    <!-- <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
+    <node pkg="robot_localization" type="ekf_localization_node" name="robot_localization_ekf_node" clear_params="true">
         <rosparam command="load" file="$(find multi_aruco)/params/ekf_params.yaml"/>
-    </node> -->
+    </node>
 
     <!-- RViz -->
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/settings.rviz" required="true"/>
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/multi_aruco.rviz" required="true"/>
+
+    <!-- Robot Render -->
+    <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch">
+        <arg name="stream_joints" value="false"/>
+    </include>
 
 </launch>

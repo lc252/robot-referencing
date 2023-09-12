@@ -18,6 +18,9 @@
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
 
+// Segmentation
+#include <pcl/segmentation/extract_clusters.h>
+
 // FPFH
 #include <pcl/features/fpfh_omp.h>
 #include <pcl/registration/sample_consensus_prerejective.h>
@@ -57,7 +60,7 @@ public:
         // allow the tf buffer to fill
         ros::Duration(1.0).sleep();
         build_robot_cloud();
-        publish_cloud(robot_cloud, "map");
+        publish_cloud(robot_cloud, "world");
 
         // get params
         get_parameters();
@@ -133,15 +136,17 @@ private:
         FeatureCloudT::Ptr robot_features(new FeatureCloudT);
         FeatureCloudT::Ptr scene_features(new FeatureCloudT);
 
-        
         // load cloud
         ROS_INFO("Loading Cloud");
         pcl::fromROSMsg(cloud_in, *scene);
 
         // Downsample
-        ROS_INFO("Downsampling Clouds");
+        ROS_INFO("Downsampling Cloud");
         downsample(scene, downsample_leaf_size);
-        downsample(robot_cloud, downsample_leaf_size);
+
+        // Extract largest cluster
+        ROS_INFO("Extracting Largest Cluster");
+        cluster_extraction(scene, downsample_leaf_size*1.2);
 
         // Estimate normals
         ROS_INFO("Estimating Normals");
@@ -154,26 +159,17 @@ private:
         est_features(scene, scene_features, feature_radius_search);
 
         // Perform alignment
-        if (use_super4pcs)
-        {
-            super4pcs_register(scene);
-        }
+        if (use_super4pcs) super4pcs_register(scene);
 
-        if (use_fpfh)
-        {
-            fpfh_register(scene, scene_features, robot_features);
-        }
+        if (use_fpfh) fpfh_register(scene, scene_features, robot_features);
 
-        if (use_icp)
-        {
-            icp_refine(scene);
-        }
+        if (use_icp) icp_refine(scene);
 
         // Broadcast tf
-        broadcast_tf("map", "aligned");
+        broadcast_tf("world", "aligned");
 
         // Publish ros msg cloud
-        publish_cloud(scene, "map");
+        publish_cloud(scene, "world");
 
         ROS_INFO("Finished\n");
     }
@@ -301,6 +297,8 @@ private:
         }
         *robot_cloud += *base_link_cloud;
 
+        downsample(robot_cloud, downsample_leaf_size);
+
         sensor_msgs::PointCloud2 ros_cloud;
         pcl::toROSMsg(*robot_cloud, ros_cloud);
         ros_cloud.header.frame_id = "base_link";
@@ -330,6 +328,54 @@ private:
         fest.setInputCloud(cloud);
         fest.setInputNormals(cloud);
         fest.compute(*features);
+    }
+
+    void cluster_extraction(PointCloudT::Ptr &cloud, float sr)
+    {
+        // Search cloud for clusters
+        pcl::search::KdTree<PointNT>::Ptr tree (new pcl::search::KdTree<PointNT>);
+        tree->setInputCloud(cloud);
+        std::vector<pcl::PointIndices> cluster_indices;
+        pcl::EuclideanClusterExtraction<PointNT> ec;
+        ec.setClusterTolerance(sr);
+        ec.setMinClusterSize(100);
+        ec.setMaxClusterSize(50000);
+        ec.setSearchMethod(tree);
+        ec.setInputCloud(cloud);
+        ec.extract(cluster_indices);
+
+        // Find largest cluster
+        int idx = 0;
+        int largest_cluster_size = 0;
+        int cluster_size;
+        for (int i = 0; i < cluster_indices.size(); ++i)
+        {
+            cluster_size = cluster_indices[i].indices.size();
+            if (cluster_size > largest_cluster_size)
+            {
+                largest_cluster_size = cluster_size;
+                idx = i;
+            }
+        }
+        
+        if (largest_cluster_size == 0)
+        {
+            ROS_ERROR("No clusters found");
+            return;
+        }
+
+        // Extract largest cluster
+        PointCloudT::Ptr cloud_cluster(new PointCloudT);
+        for(std::vector<int>::const_iterator it = cluster_indices[idx].indices.begin(); it != cluster_indices[idx].indices.end(); ++it)
+        {
+            cloud_cluster->push_back((*cloud)[*it]);
+        }
+        cloud_cluster->width = cloud_cluster->size();
+        cloud_cluster->height = 1;
+        cloud_cluster->is_dense = true;
+
+        // Return largest cluster
+        *cloud = *cloud_cluster;
     }
 
     void publish_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
