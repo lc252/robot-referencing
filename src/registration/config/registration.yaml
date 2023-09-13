@@ -1,6 +1,6 @@
 {
   "use_super4pcs": false,
-  "use_fpfh": true,
+  "use_fpfh": false,
   "use_icp": false,
   
   "process" :
