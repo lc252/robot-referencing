@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="use_camera" default="false"/>
+    <arg name="use_camera" default="true"/>
 
     <!-- For Processing Rosbag -->
     <param unless="$(arg use_camera)" name="use_sim_time" value="true"/>
