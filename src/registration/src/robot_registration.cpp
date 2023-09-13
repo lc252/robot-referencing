@@ -64,6 +64,15 @@ public:
 
         // get params
         get_parameters();
+
+        // this will be updated to listen for an estimate provided by unity. This estimate works for the bag file
+        Eigen::Vector3f t(-0.4482371211051941, -2.3525338172912598, 0.35258662700653076);
+        Eigen::Quaternionf q(0.7042866369699766, 0.7050394449897112, 0.08298805706486052, 0.0035871740503676595);
+        transformation_estimate.setIdentity();
+        transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
+        transformation_estimate.block<3,1>(0,3) = t;
+        
+        alignment_transform.setIdentity();
     };
     
     ~robot_registration_node()
@@ -99,6 +108,7 @@ private:
 
     // transform estimation
     Eigen::Matrix4f transformation_estimate;
+    Eigen::Matrix4f alignment_transform;
 
     // params
     // process
@@ -146,7 +156,8 @@ private:
 
         // Extract largest cluster
         ROS_INFO("Extracting Largest Cluster");
-        cluster_extraction(scene, downsample_leaf_size*1.2);
+        int clusters = cluster_extraction(scene, downsample_leaf_size*1.2);
+        if (clusters == 0) return;
 
         // Estimate normals
         ROS_INFO("Estimating Normals");
@@ -164,6 +175,10 @@ private:
         if (use_fpfh) fpfh_register(scene, scene_features, robot_features);
 
         if (use_icp) icp_refine(scene);
+
+        // Transform cloud FOR TESTING
+        ROS_INFO("Transforming Cloud");
+        pcl::transformPointCloud(*scene, *scene, transformation_estimate);
 
         // Broadcast tf
         broadcast_tf("world", "aligned");
@@ -185,8 +200,8 @@ private:
         super4pcs.setOverlap(overlap);
         super4pcs.setDelta(delta);
         super4pcs.setSampleSize(super4pcs_samples);
-        super4pcs.align(*source_cloud);
-        transformation_estimate = super4pcs.getFinalTransformation();
+        super4pcs.align(*source_cloud, transformation_estimate);
+        alignment_transform = super4pcs.getFinalTransformation();
     }
 
     void fpfh_register(PointCloudT::Ptr &source_cloud, FeatureCloudT::Ptr &source_features, FeatureCloudT::Ptr &robot_features)
@@ -212,8 +227,8 @@ private:
         fpfh.setSimilarityThreshold(similarity_threshold);
         fpfh.setMaxCorrespondenceDistance(max_correspondence_distance_fpfh);
         fpfh.setInlierFraction(inlier_fraction);
-        fpfh.align(*source_cloud);//, transformation_estimate);
-        transformation_estimate = fpfh.getFinalTransformation();
+        fpfh.align(*source_cloud, transformation_estimate);
+        alignment_transform = fpfh.getFinalTransformation();
     }
 
     void icp_refine(PointCloudT::Ptr &source_cloud)
@@ -228,8 +243,8 @@ private:
         // icp.setTransformationEpsilon(transformation_epsilon);
         // icp.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon);
         icp.setMaximumIterations(max_icp_iterations);
-        icp.align(*source_cloud);
-        transformation_estimate = icp.getFinalTransformation();
+        icp.align(*source_cloud, transformation_estimate);
+        alignment_transform = icp.getFinalTransformation();
     }
 
     void load_robot()
@@ -330,7 +345,7 @@ private:
         fest.compute(*features);
     }
 
-    void cluster_extraction(PointCloudT::Ptr &cloud, float sr)
+    int cluster_extraction(PointCloudT::Ptr &cloud, float sr)
     {
         // Search cloud for clusters
         pcl::search::KdTree<PointNT>::Ptr tree (new pcl::search::KdTree<PointNT>);
@@ -338,7 +353,7 @@ private:
         std::vector<pcl::PointIndices> cluster_indices;
         pcl::EuclideanClusterExtraction<PointNT> ec;
         ec.setClusterTolerance(sr);
-        ec.setMinClusterSize(100);
+        ec.setMinClusterSize(1000);
         ec.setMaxClusterSize(50000);
         ec.setSearchMethod(tree);
         ec.setInputCloud(cloud);
@@ -361,7 +376,7 @@ private:
         if (largest_cluster_size == 0)
         {
             ROS_ERROR("No clusters found");
-            return;
+            return 0;
         }
 
         // Extract largest cluster
@@ -376,6 +391,7 @@ private:
 
         // Return largest cluster
         *cloud = *cloud_cluster;
+        return 1;
     }
 
     void publish_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
@@ -388,10 +404,10 @@ private:
     }
 
     void broadcast_tf(std::string parent_frame, std::string child_frame)
-    {
+    {   
         // cast to type that tf2_eigen accepts
         Eigen::Affine3d transformation;  
-        transformation.matrix() = transformation_estimate.cast<double>();
+        transformation.matrix() = alignment_transform.cast<double>();
         // create transform TF
         geometry_msgs::TransformStamped object_alignment_tf;
         object_alignment_tf = tf2::eigenToTransform(transformation);
