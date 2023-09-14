@@ -60,13 +60,14 @@ public:
         // allow the tf buffer to fill
         ros::Duration(1.0).sleep();
         build_robot_cloud();
-        publish_cloud(robot_cloud, "world");
+        robot_cloud_pub.publish(pcl_to_ros_cloud(robot_cloud, "base_link"));
 
         // get params
         get_parameters();
 
         // this will be updated to listen for an estimate provided by unity. This estimate works for the bag file
-        Eigen::Vector3f t(-0.4482371211051941, -2.3525338172912598, 0.35258662700653076);
+        // Eigen::Vector3f t(-0.4482371211051941, -2.3525338172912598, 0.35258662700653076);
+        Eigen::Vector3f t(0, 1.044, 0.673);
         Eigen::Quaternionf q(0.7042866369699766, 0.7050394449897112, 0.08298805706486052, 0.0035871740503676595);
         transformation_estimate.setIdentity();
         transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
@@ -178,13 +179,15 @@ private:
 
         // Transform cloud FOR TESTING
         ROS_INFO("Transforming Cloud");
-        pcl::transformPointCloud(*scene, *scene, transformation_estimate);
+        // pcl::transformPointCloud(*scene, *scene, transformation_estimate);
 
         // Broadcast tf
         broadcast_tf("world", "aligned");
 
-        // Publish ros msg cloud
-        publish_cloud(scene, "world");
+        // Publish scene cloud
+        aligned_cloud_pub.publish(pcl_to_ros_cloud(scene, "world"));
+        // Publish robot cloud
+        robot_cloud_pub.publish(pcl_to_ros_cloud(robot_cloud, "base_link"));
 
         ROS_INFO("Finished\n");
     }
@@ -313,11 +316,6 @@ private:
         *robot_cloud += *base_link_cloud;
 
         downsample(robot_cloud, downsample_leaf_size);
-
-        sensor_msgs::PointCloud2 ros_cloud;
-        pcl::toROSMsg(*robot_cloud, ros_cloud);
-        ros_cloud.header.frame_id = "base_link";
-        robot_cloud_pub.publish(ros_cloud);
     }
 
     void downsample(PointCloudT::Ptr &cloud, float leaf_size)
@@ -353,7 +351,7 @@ private:
         std::vector<pcl::PointIndices> cluster_indices;
         pcl::EuclideanClusterExtraction<PointNT> ec;
         ec.setClusterTolerance(sr);
-        ec.setMinClusterSize(1000);
+        ec.setMinClusterSize(250);
         ec.setMaxClusterSize(50000);
         ec.setSearchMethod(tree);
         ec.setInputCloud(cloud);
@@ -394,13 +392,12 @@ private:
         return 1;
     }
 
-    void publish_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
+    sensor_msgs::PointCloud2 pcl_to_ros_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
     {
         sensor_msgs::PointCloud2 ros_cloud;
         pcl::toROSMsg(*cloud, ros_cloud);
         ros_cloud.header.frame_id = frame_id;
-        // Publish cloud
-        aligned_cloud_pub.publish(ros_cloud);
+        return ros_cloud;
     }
 
     void broadcast_tf(std::string parent_frame, std::string child_frame)
