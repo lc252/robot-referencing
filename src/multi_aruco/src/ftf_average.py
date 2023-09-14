@@ -6,6 +6,7 @@ from fiducial_msgs.msg import FiducialTransform, FiducialTransformArray
 from geometry_msgs.msg import Vector3, Quaternion, PoseWithCovarianceStamped, TransformStamped
 from scipy.spatial.transform import Rotation as R
 import tf2_ros as tf2
+from tf import transformations
 
 
 
@@ -58,25 +59,25 @@ class ftf_average():
 
             # store translation and rotation
             t[idx] = base_cam_M[0:3, 3]
-            q[idx] = R.from_matrix(base_cam_M[0:3,0:3]).as_quat()
-            rpy[idx] = R.from_matrix(base_cam_M[0:3,0:3]).as_euler("xyz")
+            # q[idx] = R.from_matrix(base_cam_M[0:3,0:3]).as_quat()
+            # rpy[idx] = R.from_matrix(base_cam_M[0:3,0:3]).as_euler("xyz")
+            rpy[idx] = transformations.euler_from_matrix(base_cam_M[0:3,0:3], axes="sxyz")
 
             idx += 1
             
         # average the translation and rotation
         t_mean = np.mean(t, axis=0)
-        q_mean = np.mean(q, axis=0)
         t_std = np.std(t, axis=0)
-        q_std = np.std(q, axis=0)
+        rpy_mean = np.mean(rpy, axis=0)
         rpy_std = np.std(rpy, axis=0)
         # remove values outside 1 stds
         t = t[np.all(np.abs(t - t_mean) < 1 * t_std, axis=1)]
-        q = q[np.all(np.abs(q - q_mean) < 1 * q_std, axis=1)]
+        rpy = rpy[np.all(np.abs(rpy - rpy_mean) < 1 * rpy_std, axis=1)]
         # recompute mean
         t_mean = np.mean(t, axis=0)
-        q_mean = np.mean(q, axis=0)
-        # convert q to euler, roll, pitch, yaw
-        rpy = R.from_quat(q_mean).as_euler("xyz")
+        rpy_mean = np.mean(rpy, axis=0)
+        # convert euler to q
+        q_mean = R.from_euler("xyz", rpy_mean).as_quat()
 
         # fill covariance matrix
         cov = np.array([[t_std[0], 0, 0, 0, 0, 0],
