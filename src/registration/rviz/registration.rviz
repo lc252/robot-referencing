@@ -20,6 +20,7 @@ Panels:
   - Class: rviz/Views
     Expanded:
       - /Current View1
+      - /Current View1/Focal Point1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
@@ -63,7 +64,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -74,11 +75,11 @@ Visualization Manager:
       Size (Pixels): 1
       Size (m): 0.004999999888241291
       Style: Points
-      Topic: /cloud_in
+      Topic: cloud_in
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -144,37 +145,9 @@ Visualization Manager:
         All Enabled: false
         aligned:
           Value: true
-        aruco0:
-          Value: true
-        aruco1:
-          Value: true
-        aruco10:
-          Value: true
-        aruco11:
-          Value: true
-        aruco2:
-          Value: true
-        aruco3:
-          Value: true
-        aruco4:
-          Value: true
-        aruco5:
-          Value: true
-        aruco6:
-          Value: true
-        aruco7:
-          Value: true
-        aruco8:
-          Value: true
-        aruco9:
-          Value: true
         base:
           Value: false
         base_link:
-          Value: true
-        camera_color_optical_frame:
-          Value: true
-        camera_link:
           Value: true
         flange:
           Value: false
@@ -201,43 +174,16 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        camera_link:
-          camera_color_optical_frame:
-            {}
         world:
           aligned:
             {}
           base_link:
-            aruco0:
-              {}
-            aruco1:
-              {}
-            aruco2:
-              {}
             base:
               {}
             link_1:
-              aruco3:
-                {}
-              aruco4:
-                {}
               link_2:
-                aruco5:
-                  {}
-                aruco6:
-                  {}
-                aruco7:
-                  {}
                 link_3:
-                  aruco10:
-                    {}
-                  aruco8:
-                    {}
-                  aruco9:
-                    {}
                   link_4:
-                    aruco11:
-                      {}
                     link_5:
                       link_6:
                         flange:
@@ -336,7 +282,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.6614081859588623
+      Distance: 3.825815200805664
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -352,9 +298,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4703977704048157
+      Pitch: 0.1553979068994522
       Target Frame: <Fixed Frame>
-      Yaw: 0.5804062485694885
+      Yaw: 5.9485955238342285
     Saved: ~
 Window Geometry:
   Displays:
@@ -372,5 +318,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 1905
-  Y: -14
+  X: 2174
+  Y: 68

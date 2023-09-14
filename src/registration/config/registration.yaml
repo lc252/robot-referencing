@@ -1,7 +1,7 @@
 {
   "use_super4pcs": false,
   "use_fpfh": false,
-  "use_icp": false,
+  "use_icp": true,
   
   "process" :
   {
