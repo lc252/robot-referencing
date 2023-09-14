@@ -17,6 +17,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 // Segmentation
 #include <pcl/segmentation/extract_clusters.h>
@@ -159,6 +160,10 @@ private:
         ROS_INFO("Extracting Largest Cluster");
         int clusters = cluster_extraction(scene, downsample_leaf_size*1.2);
         if (clusters == 0) return;
+
+        // Remove outliers
+        ROS_INFO("Removing Outliers");
+        remove_outliers(scene, 25, 1.0);
 
         // Estimate normals
         ROS_INFO("Estimating Normals");
@@ -390,6 +395,15 @@ private:
         // Return largest cluster
         *cloud = *cloud_cluster;
         return 1;
+    }
+
+    void remove_outliers(PointCloudT::Ptr &cloud, int meanK, float std)
+    {
+        pcl::StatisticalOutlierRemoval<PointNT> sor;
+        sor.setInputCloud(cloud);
+        sor.setMeanK(meanK);
+        sor.setStddevMulThresh(std);
+        sor.filter(*cloud);
     }
 
     sensor_msgs::PointCloud2 pcl_to_ros_cloud(PointCloudT::Ptr &cloud, std::string frame_id)
