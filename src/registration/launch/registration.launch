@@ -1,14 +1,10 @@
 <launch>
 
-    <arg name="cloud_topic" default="/camera/ahat/inverted"/>
-    <arg name="use_camera" default="false"/>
+    <arg name="cloud_topic" default="/camera/ahat"/>
+    <arg name="online" default="true"/>
 
     <!-- For Processing Rosbag -->
-    <param unless="$(arg use_camera)" name="use_sim_time" value="true"/>
-    <node unless="$(arg use_camera)" pkg="robot_referencing" type="joint_state_rerouter.py" name="joint_state_rerouter"/> 
-    <!-- Invert PC Axis -->
-    <node unless="$(arg use_camera)" pkg="robot_referencing" type="invert_pc_axis.py" name="invert_pc_axis"/>
-    
+    <param unless="$(arg online)" name="use_sim_time" value="true"/>
 
     <node pkg="registration" type="robot_registration" name="registration_node" output="screen">
         <rosparam command="load" file="$(find registration)/config/registration.yaml"/>
@@ -20,8 +16,7 @@
 
     <!-- Robot Render -->
     <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch">
-        <!-- arg for using bag file -->
-        <arg name="joint_topic" value="/joint_states2"/>
+        <arg name="stream_joints" value="$(arg online)"/>
     </include>
 
 </launch>
