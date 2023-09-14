@@ -17,11 +17,10 @@ class plotter():
         tf : TransformStamped
         for tf in msg.transforms:
             if tf.header.frame_id == "world" and tf.child_frame_id == "camera_link":
-                rospy.logerr("got tf")
-                self.df = self.df.append({"x": tf.transform.translation.x, "y": tf.transform.translation.y, "z": tf.transform.translation.z, "qx": tf.transform.rotation.x, "qy": tf.transform.rotation.y, "qz": tf.transform.rotation.z, "qw": tf.transform.rotation.w}, ignore_index=True)
-                self.df.to_csv("/home/lachl/measurements/data.csv")
-
-
+                rospy.loginfo("Adding TF")
+                # self.df = self.df.append({"x": tf.transform.translation.x, "y": tf.transform.translation.y, "z": tf.transform.translation.z, "qx": tf.transform.rotation.x, "qy": tf.transform.rotation.y, "qz": tf.transform.rotation.z, "qw": tf.transform.rotation.w}, ignore_index=True)
+                self.df = pd.concat([self.df, pd.DataFrame({"x": tf.transform.translation.x, "y": tf.transform.translation.y, "z": tf.transform.translation.z, "qx": tf.transform.rotation.x, "qy": tf.transform.rotation.y, "qz": tf.transform.rotation.z, "qw": tf.transform.rotation.w}, index=[0])])
+                self.df.to_csv("/home/lachl/measurements/multi_aruco_tf_euler.csv")
 
 
 
