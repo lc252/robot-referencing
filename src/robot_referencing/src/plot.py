@@ -21,6 +21,14 @@ for i in range(len(df)):
     df["yaw"][i] = yaw
 
 
+# remove values outside of 3 standard deviations
+df = df[(np.abs(df["x"] - df["x"].mean()) <= (3 * df["x"].std()))]
+df = df[(np.abs(df["y"] - df["y"].mean()) <= (3 * df["y"].std()))]
+df = df[(np.abs(df["z"] - df["z"].mean()) <= (3 * df["z"].std()))]
+df = df[(np.abs(df["roll"] - df["roll"].mean()) <= (3 * df["roll"].std()))]
+df = df[(np.abs(df["pitch"] - df["pitch"].mean()) <= (3 * df["pitch"].std()))]
+df = df[(np.abs(df["yaw"] - df["yaw"].mean()) <= (3 * df["yaw"].std()))]
+
 for k in df.keys():
     df[k] = df[k] - df[k].mean()
     print("range", k, "=", max(df[k]) - min(df[k]))
