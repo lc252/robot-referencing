@@ -67,9 +67,12 @@ public:
         get_parameters();
 
         // this will be updated to listen for an estimate provided by unity. This estimate works for the bag file
-        // Eigen::Vector3f t(-0.4482371211051941, -2.3525338172912598, 0.35258662700653076);
-        Eigen::Vector3f t(0, 1.044, 0.673);
-        Eigen::Quaternionf q(0.7042866369699766, 0.7050394449897112, 0.08298805706486052, 0.0035871740503676595);
+        // Eigen::Vector3f t(0, 1.044, 0.673);
+        // Eigen::Quaternionf q(0.7042866369699766, 0.7050394449897112, 0.08298805706486052, 0.0035871740503676595);
+
+        // updated guess
+        Eigen::Vector3f t(0.108, 1.099, 0.680);
+        Eigen::Quaternionf q(0.705, 0.709, -0.018, -0.021);
         transformation_estimate.setIdentity();
         transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
         transformation_estimate.block<3,1>(0,3) = t;
@@ -165,7 +168,7 @@ private:
 
         // Remove outliers
         ROS_INFO("Removing Outliers");
-        remove_outliers(scene, 50, 1.5);
+        remove_outliers(scene, 25, 1.0);
 
         // Perform alignment
         if (use_super4pcs) 
