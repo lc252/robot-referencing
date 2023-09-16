@@ -12,6 +12,11 @@
         <remap from="cloud_in" to="$(arg cloud_topic)"/>
     </node> 
 
+    <!-- <node pkg="registration" type="ahat_aggregate" name="ahat_aggregate_node" output="screen">
+        <remap from="cloud_in" to="$(arg cloud_topic)"/>
+        <remap from="cloud_out" to="/camera/ahat_aggregate"/>
+    </node> -->
+
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find registration)/rviz/registration.rviz" required="true"/>
 
     <!-- Robot Render -->
