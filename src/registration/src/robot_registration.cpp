@@ -466,7 +466,7 @@ private:
         ros::param::get("/registration_node/use_super4pcs", use_super4pcs);
         ros::param::get("/registration_node/super4pcs/overlap", overlap);
         ros::param::get("/registration_node/super4pcs/delta", delta);
-        ros::param::get("/registration_node/super4pcs/super4pcs_samples", super4pcs_samples);
+        ros::param::get("/registration_node/super4pcs/samples", super4pcs_samples);
 
         ros::param::get("/registration_node/use_icp", use_icp);
         ros::param::get("/registration_node/icp/MaximumIterations", max_icp_iterations);
