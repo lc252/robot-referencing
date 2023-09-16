@@ -117,9 +117,11 @@ private:
     bool use_super4pcs;
     bool use_fpfh;
     bool use_icp;
+    // preprocess
     float downsample_leaf_size;
     float normal_radius_search;
     float feature_radius_search;
+    int min_cluster_size;
     // fpfh
     int max_fpfh_iterations;
     int fpfh_samples;
@@ -163,22 +165,33 @@ private:
 
         // Remove outliers
         ROS_INFO("Removing Outliers");
-        remove_outliers(scene, 25, 1.0);
-
-        // Estimate normals
-        ROS_INFO("Estimating Normals");
-        est_normals(scene, normal_radius_search);
-        est_normals(robot_cloud, normal_radius_search);
-
-        // Estimate features
-        ROS_INFO("Estimating Features");
-        est_features(robot_cloud, robot_features, feature_radius_search);
-        est_features(scene, scene_features, feature_radius_search);
+        remove_outliers(scene, 50, 1.5);
 
         // Perform alignment
-        if (use_super4pcs) super4pcs_register(scene);
+        if (use_super4pcs) 
+        {
+            // Estimate normals
+            ROS_INFO("Estimating Normals");
+            est_normals(scene, normal_radius_search);
+            est_normals(robot_cloud, normal_radius_search);
 
-        if (use_fpfh) fpfh_register(scene, scene_features, robot_features);
+            super4pcs_register(scene);
+        }
+
+        if (use_fpfh)
+        {
+            // Estimate normals
+            ROS_INFO("Estimating Normals");
+            est_normals(scene, normal_radius_search);
+            est_normals(robot_cloud, normal_radius_search);
+
+            // Estimate features
+            ROS_INFO("Estimating Features");
+            est_features(robot_cloud, robot_features, feature_radius_search);
+            est_features(scene, scene_features, feature_radius_search);
+
+            fpfh_register(scene, scene_features, robot_features);
+        } 
 
         if (use_icp) icp_refine(scene);
 
@@ -193,6 +206,9 @@ private:
         aligned_cloud_pub.publish(pcl_to_ros_cloud(scene, "world"));
         // Publish robot cloud
         robot_cloud_pub.publish(pcl_to_ros_cloud(robot_cloud, "base_link"));
+
+        // set the estimate to the most recent alignment
+        // transformation_estimate = alignment_transform;
 
         ROS_INFO("Finished\n");
     }
@@ -356,7 +372,7 @@ private:
         std::vector<pcl::PointIndices> cluster_indices;
         pcl::EuclideanClusterExtraction<PointNT> ec;
         ec.setClusterTolerance(sr);
-        ec.setMinClusterSize(250);
+        ec.setMinClusterSize(min_cluster_size);
         ec.setMaxClusterSize(50000);
         ec.setSearchMethod(tree);
         ec.setInputCloud(cloud);
@@ -431,9 +447,10 @@ private:
 
     void get_parameters()
     {
-        ros::param::get("/registration_node/process/downsample_leaf_size", downsample_leaf_size);
-        ros::param::get("/registration_node/process/normal_SearchRadius", normal_radius_search);
-        ros::param::get("/registration_node/process/features_SearchRadius", feature_radius_search);
+        ros::param::get("/registration_node/preprocess/downsample_leaf_size", downsample_leaf_size);
+        ros::param::get("/registration_node/preprocess/normal_SearchRadius", normal_radius_search);
+        ros::param::get("/registration_node/preprocess/features_SearchRadius", feature_radius_search);
+        ros::param::get("/registration_node/preprocess/min_cluster_size", min_cluster_size);
 
         ros::param::get("/registration_node/use_fpfh", use_fpfh);
         ros::param::get("/registration_node/fpfh/MaximumIterations", max_fpfh_iterations);
