@@ -3,11 +3,12 @@
   "use_fpfh": false,
   "use_icp": true,
   
-  "process" :
+  "preprocess" :
   {
     "downsample_leaf_size": 0.0125,
     "normal_SearchRadius": 0.025,
-    "features_SearchRadius": 0.025
+    "features_SearchRadius": 0.025,
+    "min_cluster_size": 250
   },
 
   "fpfh" :
