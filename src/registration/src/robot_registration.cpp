@@ -71,8 +71,11 @@ public:
         // Eigen::Quaternionf q(0.7042866369699766, 0.7050394449897112, 0.08298805706486052, 0.0035871740503676595);
 
         // updated guess
-        Eigen::Vector3f t(0.108, 1.099, 0.680);
-        Eigen::Quaternionf q(0.705, 0.709, -0.018, -0.021);
+        // Eigen::Vector3f t(0.108, 1.099, 0.680);
+        // Eigen::Quaternionf q(0.705, 0.709, -0.018, -0.021);
+        Eigen::Vector3f t(0.065, 0.536, 0.398);
+        Eigen::Quaternionf q(0.638, -0.770, 0.015, -0.028);
+
         transformation_estimate.setIdentity();
         transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
         transformation_estimate.block<3,1>(0,3) = t;
