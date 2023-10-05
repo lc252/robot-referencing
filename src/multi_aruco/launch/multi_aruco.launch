@@ -1,13 +1,13 @@
 <launch>
 
-    <arg name="use_camera" default="false"/>
+    <arg name="online" default="true"/>
 
     <!-- For Processing Rosbag -->
-    <param unless="$(arg use_camera)" name="use_sim_time" value="true"/>
-    <node unless="$(arg use_camera)" pkg="robot_referencing" type="clock_rerouter.py" name="clock_pub"/> 
+    <param unless="$(arg online)" name="use_sim_time" value="true"/>
+    <!-- <node unless="$(arg use_camera)" pkg="robot_referencing" type="clock_rerouter.py" name="clock_pub"/>  -->
     
     <!-- RS Camera -->
-    <include if="$(arg use_camera)" file="$(find multi_aruco)/launch/rs_rgbd.launch">
+    <include if="$(arg online)" file="$(find multi_aruco)/launch/rs_rgbd.launch">
         <arg name="output"              value="log"/>
         <arg name="depth_width"         value="640"/>
         <arg name="depth_height"        value="480"/>
@@ -43,7 +43,7 @@
 
     <!-- Robot Render -->
     <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch">
-        <arg name="stream_joints" value="false"/>
+        <arg name="stream_joints" value="$(arg online)"/>
     </include>
 
 </launch>

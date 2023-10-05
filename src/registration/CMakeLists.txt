@@ -137,8 +137,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/registration_node.cpp)
-add_executable(super4pcs_registration src/super4pcs_registration.cpp)
-add_executable(fpfh_registration src/fpfh_registration.cpp)
+add_executable(ahat_aggregate src/ahat_aggregate.cpp)
 add_executable(robot_registration src/robot_registration.cpp)
 
 ## Rename C++ executable without prefix
@@ -155,8 +154,7 @@ add_executable(robot_registration src/robot_registration.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(super4pcs_registration ${catkin_LIBRARIES} gr::algo)
-target_link_libraries(fpfh_registration ${catkin_LIBRARIES})
+target_link_libraries(ahat_aggregate ${catkin_LIBRARIES})
 target_link_libraries(robot_registration ${catkin_LIBRARIES} gr::algo)
 
 #############

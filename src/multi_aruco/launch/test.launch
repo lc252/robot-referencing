@@ -1,0 +1,37 @@
+<launch>
+    
+    <!-- RS Camera -->
+    <include file="$(find multi_aruco)/launch/rs_rgbd.launch">
+        <arg name="output"              value="log"/>
+        <arg name="depth_width"         value="640"/>
+        <arg name="depth_height"        value="480"/>
+        <arg name="depth_fps"           value="30"/>
+        <arg name="color_width"         value="640"/>
+        <arg name="color_height"        value="480"/>
+        <arg name="color_fps"           value="30"/>
+    </include>
+
+    <!-- Aruco Detection -->
+    <include file="$(find aruco_detect)/launch/aruco_detect.launch">
+        <arg name="camera" value="/camera/color"/>
+        <arg name="image" value="image_raw"/>
+        <arg name="transport" value="compressed"/>
+        <arg name="fiducial_len" value="0.076"/>
+        <arg name="dictionary" value="0"/>
+        <arg name="do_pose_estimation" value="true"/>
+    </include>
+
+    <!-- Known Arucos -->
+    <!-- <node pkg="multi_aruco" name="aruco_tf_broadcaster" type="aruco_tfs.py"/> -->
+
+    <!-- RViz -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_aruco)/rviz/test.rviz" required="true"/>
+
+    <!-- Robot Render -->
+    <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch"/>
+
+    <node pkg="tf" type="static_transform_publisher" name="fiducial1tobase" args="-0.111 0.006 -0.126 0.479 0.506 0.496 0.536 fiducial_1 base_link 100" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="fiducial1tobase" args="0 -0.15 -0.001 0 0 0 1 fiducial_4 base_link 100" /> -->
+
+
+</launch>

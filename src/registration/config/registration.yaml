@@ -1,13 +1,14 @@
 {
   "use_super4pcs": false,
-  "use_fpfh": true,
-  "use_icp": false,
+  "use_fpfh": false,
+  "use_icp": true,
   
-  "process" :
+  "preprocess" :
   {
     "downsample_leaf_size": 0.0125,
     "normal_SearchRadius": 0.025,
-    "features_SearchRadius": 0.025
+    "features_SearchRadius": 0.025,
+    "min_cluster_size": 250
   },
 
   "fpfh" :
@@ -22,9 +23,9 @@
 
   "super4pcs" :
   {
-    "overlap": 0.3,
-    "delta": 0.05,
-    "samples": 50000
+    "overlap": 0.05,
+    "delta": 0.01,
+    "samples": 500000
   },
 
   "icp" :
