@@ -5,7 +5,7 @@ import numpy as np
 from tf import transformations
 
 
-df = pd.read_csv("/home/lachl/measurements/icp.csv")
+df = pd.read_csv("/home/fif/lc252/measurements/static_camera_frame_moving_robot.csv")
 
 
 print(df.head())
