@@ -3,6 +3,9 @@
     <arg name="cloud_topic" default="/camera/ahat"/>
     <arg name="online" default="true"/>
 
+    <!-- Live Processing -->
+    <include if="$(arg online)" file="$(find ros_tcp_endpoint)/launch/endpoint.launch"/>
+
     <!-- For Processing Rosbag -->
     <param unless="$(arg online)" name="use_sim_time" value="true"/>
 
@@ -23,5 +26,7 @@
     <include file="$(find abb_irb1200_support)/launch/real_robot_render.launch">
         <arg name="stream_joints" value="$(arg online)"/>
     </include>
+
+    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher1" args="0 0 0 0 0 0 1 world base_link 100" />
 
 </launch>
