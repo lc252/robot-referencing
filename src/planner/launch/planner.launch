@@ -17,7 +17,7 @@
     </include>
 
     <!-- If needed, broadcast static tf for robot root -->
-    <node pkg="tf2_ros" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0 0 0 0 world base_link" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0 0 0 0 1 unity base_link 100" /> -->
 
     <!-- send fake joint values -->
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
@@ -33,6 +33,12 @@
       <rosparam command="load" file="$(find abb_irb1200_7_70_moveit_config)/config/kinematics.yaml"/>
     </node>
 
-    <!-- <node pkg="planner" type="target_planner" name="target_planner"/> -->
+    <node pkg="planner" type="target_planner" name="target_planner"/>
+
+    <include file="$(find ros_tcp_endpoint)/launch/endpoint.launch"/>
+
+    <!-- <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_2" args="0 0 0 0 0 0 1 world unity 100" /> -->
+    <node pkg="planner" type="world_to_unity.py" name="w2u"/>
+
 
 </launch>
