@@ -11,9 +11,13 @@ class world_to_unity_node:
         self.br = TransformBroadcaster()
 
     def pose_cb(self, pose : PoseStamped):
-        pos = (-pose.pose.position.x, -pose.pose.position.y, -pose.pose.position.z)
-        rot = (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, -pose.pose.orientation.w)
-        self.br.sendTransform(pos, rot, rospy.Time.now(), "unity", "base_link")
+        pos = (pose.pose.position.x, pose.pose.position.y, pose.pose.position.z)
+        rot = (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w)
+        self.br.sendTransform(pos, rot, rospy.Time.now(), "base_link", "unity")
+
+    # def pose_cb2(self, pose : PoseStamped):
+    #     pose.header.frame_id = "base_link"
+    #     self.pose_repub.publish(pose)
 
 
 if __name__ == '__main__':
