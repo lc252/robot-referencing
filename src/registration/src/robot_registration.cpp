@@ -2,6 +2,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <geometry_msgs/PoseStamped.h>
 
 // TF
 #include <tf2_eigen/tf2_eigen.h>
@@ -55,7 +56,8 @@ public:
         robot_cloud_pub(nh.advertise<sensor_msgs::PointCloud2>("robot_cloud", 1)),
         tf_buffer(),
         tf_listener(tf_buffer),
-        tf_broadcaster()
+        tf_broadcaster(),
+        estimation_sub(nh.subscribe("unity_objects/alignment_guess", 1, &robot_registration_node::estimation_cb, this))
     {
         load_robot();
         // allow the tf buffer to fill
@@ -69,16 +71,15 @@ public:
         // this will be updated to listen for an estimate provided by unity. This estimate works for the bag file
         // Eigen::Vector3f t(0, 1.044, 0.673);
         // Eigen::Quaternionf q(0.7042866369699766, 0.7050394449897112, 0.08298805706486052, 0.0035871740503676595);
-
         // updated guess
         // Eigen::Vector3f t(0.108, 1.099, 0.680);
         // Eigen::Quaternionf q(0.705, 0.709, -0.018, -0.021);
-        Eigen::Vector3f t(0.065, 0.536, 0.398);
-        Eigen::Quaternionf q(0.638, -0.770, 0.015, -0.028);
+
 
         transformation_estimate.setIdentity();
-        transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
-        transformation_estimate.block<3,1>(0,3) = t;
+
+        // transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
+        // transformation_estimate.block<3,1>(0,3) = t;
         
         alignment_transform.setIdentity();
     };
@@ -94,6 +95,7 @@ private:
     ros::Subscriber cloud_sub;
     ros::Publisher aligned_cloud_pub;
     ros::Publisher robot_cloud_pub;
+    ros::Subscriber estimation_sub;
     
     // tf
     tf2_ros::Buffer tf_buffer;
@@ -173,7 +175,12 @@ private:
         ROS_INFO("Removing Outliers");
         remove_outliers(scene, 25, 1.0);
 
-        // Perform alignment
+        // transform the cloud by the estimate first
+        ROS_INFO("Transforming Cloud");
+        pcl::transformPointCloud(*scene, *scene, transformation_estimate.inverse());
+
+
+        // Perform alignment, the output of these stages will be the transform of adjustment between estimate and final
         if (use_super4pcs) 
         {
             // Estimate normals
@@ -201,12 +208,10 @@ private:
 
         if (use_icp) icp_refine(scene);
 
-        // Transform cloud FOR TESTING
-        ROS_INFO("Transforming Cloud");
-        // pcl::transformPointCloud(*scene, *scene, transformation_estimate);
-
-        // Broadcast tf
-        broadcast_tf("world", "aligned");
+        // Broadcast final tf, this is transformation_estimate multiplied by alignment_transform
+        Eigen::Matrix4f final_transform = transformation_estimate * alignment_transform;
+        broadcast_tf("world", "unity", final_transform.inverse());
+        broadcast_tf("unity","align", alignment_transform);
 
         // Publish scene cloud
         aligned_cloud_pub.publish(pcl_to_ros_cloud(scene, "world"));
@@ -217,6 +222,14 @@ private:
         // transformation_estimate = alignment_transform;
 
         ROS_INFO("Finished\n");
+    }
+
+    void estimation_cb(geometry_msgs::PoseStamped pose_msg)
+    {
+        Eigen::Vector3f t(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z);
+        Eigen::Quaternionf q(pose_msg.pose.orientation.w, pose_msg.pose.orientation.x, pose_msg.pose.orientation.y, pose_msg.pose.orientation.z);
+        transformation_estimate.block<3,3>(0,0) = q.toRotationMatrix();
+        transformation_estimate.block<3,1>(0,3) = t;
     }
 
     void super4pcs_register(PointCloudT::Ptr &source_cloud)
@@ -230,7 +243,7 @@ private:
         super4pcs.setOverlap(overlap);
         super4pcs.setDelta(delta);
         super4pcs.setSampleSize(super4pcs_samples);
-        super4pcs.align(*source_cloud, transformation_estimate);
+        super4pcs.align(*source_cloud);
         alignment_transform = super4pcs.getFinalTransformation();
     }
 
@@ -257,7 +270,7 @@ private:
         fpfh.setSimilarityThreshold(similarity_threshold);
         fpfh.setMaxCorrespondenceDistance(max_correspondence_distance_fpfh);
         fpfh.setInlierFraction(inlier_fraction);
-        fpfh.align(*source_cloud, transformation_estimate);
+        fpfh.align(*source_cloud);
         alignment_transform = fpfh.getFinalTransformation();
     }
 
@@ -273,7 +286,7 @@ private:
         // icp.setTransformationEpsilon(transformation_epsilon);
         // icp.setEuclideanFitnessEpsilon(euclidean_fitness_epsilon);
         icp.setMaximumIterations(max_icp_iterations);
-        icp.align(*source_cloud, transformation_estimate);
+        icp.align(*source_cloud);
         alignment_transform = icp.getFinalTransformation();
     }
 
@@ -436,19 +449,19 @@ private:
         return ros_cloud;
     }
 
-    void broadcast_tf(std::string parent_frame, std::string child_frame)
+    void broadcast_tf(std::string parent_frame, std::string child_frame, Eigen::Matrix4f transform_matrix)
     {   
         // cast to type that tf2_eigen accepts
         Eigen::Affine3d transformation;  
-        transformation.matrix() = alignment_transform.cast<double>();
+        transformation.matrix() = transform_matrix.cast<double>();
         // create transform TF
-        geometry_msgs::TransformStamped object_alignment_tf;
-        object_alignment_tf = tf2::eigenToTransform(transformation);
-        object_alignment_tf.header.stamp = ros::Time::now();
-        object_alignment_tf.header.frame_id = parent_frame;
-        object_alignment_tf.child_frame_id = child_frame;
+        geometry_msgs::TransformStamped alignment_tf;
+        alignment_tf = tf2::eigenToTransform(transformation);
+        alignment_tf.header.stamp = ros::Time::now();
+        alignment_tf.header.frame_id = parent_frame;
+        alignment_tf.child_frame_id = child_frame;
         // broadcast
-        tf_broadcaster.sendTransform(object_alignment_tf);
+        tf_broadcaster.sendTransform(alignment_tf);
     }
 
     void get_parameters()
