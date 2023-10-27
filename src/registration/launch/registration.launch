@@ -28,5 +28,7 @@
     </include>
 
     <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher1" args="0 0 0 0 0 0 1 world base_link 100" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher2" args="0 0 0 0 0 0 1 world unity 100" />
+    <node pkg="tf" type="static_transform_publisher" name="static_transform_publisher3" args="0 0 1 0 0 0 1 unity align 100" /> -->
 
 </launch>
